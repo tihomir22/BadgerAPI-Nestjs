@@ -6,77 +6,28 @@ import { BinanceService } from './binance/binance.service';
 import { TechnicalIndicatorsController } from './technical-indicators/technical-indicators.controller';
 import { TechnicalIndicatorsService } from './technical-indicators/technical-indicators.service';
 import { RedireccionadorMiddleware } from './redireccionador.middleware';
-import { HistoricCoordinatorService } from './historic-coordinator/historic-coordinator.service';
+import { MongooseModule } from '@nestjs/mongoose';
+import { ExchangeCoordinatorModule } from './exchange-coordinator/exchange-coordinator.module';
+import { JuicyData } from './ignorame';
+import { MulterModule } from '@nestjs/platform-express';
 
 @Module({
-  imports: [],
+  imports: [
+    MongooseModule.forRoot(JuicyData.MONGODBSTRING, { useNewUrlParser: true }),
+    ExchangeCoordinatorModule,
+    /*  MulterModule.register({
+      dest: './src/assets',
+    }),*/
+  ],
   controllers: [
     AppController,
     BinanceController,
     TechnicalIndicatorsController,
   ],
-  providers: [
-    AppService,
-    BinanceService,
-    TechnicalIndicatorsService,
-    HistoricCoordinatorService,
-  ],
+  providers: [AppService, BinanceService, TechnicalIndicatorsService],
 })
 export class AppModule {
-  constructor(private technical: TechnicalIndicatorsService) {
-    let objetoPadre = this.technical.getClient().indicators;
-    let keys = Object.keys(objetoPadre);
-    let totales = keys.map(key => objetoPadre[key].name);
-    let copiaTotales = JSON.parse(JSON.stringify(totales));
-    //BUGGEADOS => ACOS,ASIN,COSH
-    [
-      'sma',
-      'ema',
-      'wma',
-      'dema',
-      'tema',
-      'trima',
-      'kama',
-      'hma',
-      'zlema',
-      'vwma',
-      'adosc',
-      'adx',
-      'abs',
-      'ad',
-      'add',
-      'adxr',
-      'ao',
-      'apo',
-      'aroon',
-      'aroonosc',
-      'atan',
-      'atr',
-      'avgprice',
-      'bbands',
-      'bop',
-      'cci',
-      'ceil',
-      'cmo',
-      'cos',
-      'crossany',
-      'crossover',
-      'cvi',
-      'decay',
-      'di',
-      'div',
-      'dm',
-      'dpo',
-      'edecay',
-      'emv',
-      'exp',
-    ].forEach(data => {
-      copiaTotales.splice(copiaTotales.indexOf(data), 1);
-    });
-    console.log('TODOS ' + totales.length);
-    console.log('IMPLEMENTADOS ' + (totales.length - copiaTotales.length));
-    console.log('TE QUEDAN ' + copiaTotales.length);
-  }
+  constructor() {}
 
   configure(consumer: MiddlewareConsumer) {
     consumer

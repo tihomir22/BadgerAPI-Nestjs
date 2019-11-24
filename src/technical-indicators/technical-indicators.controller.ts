@@ -1,13 +1,13 @@
 import { Controller, Get, Post, Body, HttpException } from '@nestjs/common';
 import { TechnicalIndicatorsService } from './technical-indicators.service';
 import { PaqueteIndicadorTecnico } from '../models/PaqueteIndicadorTecnico';
-import { HistoricCoordinatorService } from '../historic-coordinator/historic-coordinator.service';
+import { ExchangeCoordinatorService } from '../exchange-coordinator/exchange-coordinator';
 
 @Controller('technical-indicators')
 export class TechnicalIndicatorsController {
   constructor(
     private tulip: TechnicalIndicatorsService,
-    private historic: HistoricCoordinatorService,
+    private historic: ExchangeCoordinatorService,
   ) {}
 
   @Get()
@@ -15,7 +15,7 @@ export class TechnicalIndicatorsController {
     return this.tulip.getVersion();
   }
 
-  @Get('/all')
+ @Get('/all')
   getAllIndicators() {
     return this.tulip.getClient().indicators;
   }

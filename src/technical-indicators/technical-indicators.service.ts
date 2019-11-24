@@ -20,70 +20,17 @@ export class TechnicalIndicatorsService {
     paramsIndicator: IndicatorParams,
     historicData: Array<HistoricRegistry>,
   ) {
-    switch (paramsIndicator.indicatorName.toLowerCase()) {
-      case 'sma':
-      case 'ema':
-      case 'wma':
-      case 'dema':
-      case 'tema':
-      case 'trima':
-      case 'kama':
-      case 'hma':
-      case 'zlema':
-      case 'vwma':
-      case 'adosc':
-      case 'adx':
-      case 'adxr':
-      case 'apo':
-      case 'aroon':
-      case 'aroonosc':
-      case 'atr':
-      case 'bbands':
-      case 'cci':
-      case 'cmo':
-      case 'cvi':
-      case 'decay':
-      case 'di':
-      case 'dm':
-      case 'dpo':
-      case 'dx':
-      case 'edecay':
-        return this.execute(
-          paramsIndicator.indicatorName.toLowerCase(),
-          paramsIndicator,
-          historicData,
-        );
-      case 'abs':
-      case 'ad':
-      case 'add':
-      case 'ao':
-      case 'atan':
-      case 'avgprice':
-      case 'bop':
-      case 'ceil':
-      case 'cos':
-      case 'crossany':
-      case 'crossover':
-      case 'div':
-      case 'emv':
-      case 'exp':
-        return this.execute(
-          paramsIndicator.indicatorName.toLowerCase(),
-          paramsIndicator,
-          historicData,
-          true,
-        );
-
-      default:
-        break;
-    }
+    return this.execute(
+      paramsIndicator.indicatorName.toLowerCase(),
+      paramsIndicator,
+      historicData,
+    );
   }
 
   async execute(
     indicatorName: string,
     parametros: IndicatorParams,
     historicRegistry: Array<HistoricRegistry>,
-    noParamsIndicator?: boolean,
   ) {
     try {
       if (
@@ -103,7 +50,7 @@ export class TechnicalIndicatorsService {
                 parametros.keysNeeded,
                 historicRegistry,
               ),
-              noParamsIndicator ? [] : parametros.indicatorParams,
+              parametros.indicatorParams,
             ),
           };
         } else {
