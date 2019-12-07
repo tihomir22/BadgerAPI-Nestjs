@@ -13,8 +13,8 @@ export class ExchangeCoordinatorController {
   constructor(private exchangeCordinatorService: ExchangeCoordinatorService) {}
 
   @Get('allExchanges')
-  returnExchanges(@Res() res) {
-    return this.exchangeCordinatorService.fetchAllExchanges(res);
+  returnExchanges() {
+    return this.exchangeCordinatorService.fetchAllExchanges();
   }
 
   @Get('getExchangeIMG/:exchangeName')

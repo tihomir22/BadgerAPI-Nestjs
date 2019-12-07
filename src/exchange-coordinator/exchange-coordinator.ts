@@ -41,19 +41,8 @@ export class ExchangeCoordinatorService {
     );
   }
 
-  public fetchAllExchanges(res: any): Observable<any> {
-    // return await this.ExchangeInfoModel.find().exec();
-    return from(this.ExchangeInfoModel.find().exec()).pipe(
-      map(
-        exchangeInfo =>
-          (exchangeInfo['img'] = this.returnFile(
-            'binance',
-            '.png',
-            'src/assets',
-            res,
-          )),
-      ),
-    );
+  public fetchAllExchanges(): Observable<any> {
+    return this.ExchangeInfoModel.find();
   }
 
   async inserSomething(): Promise<ExchangeInfo> {
