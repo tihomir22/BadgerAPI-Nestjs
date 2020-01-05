@@ -3,7 +3,7 @@ import { PaqueteIndicadorTecnico } from '../models/PaqueteIndicadorTecnico';
 import { BinanceService } from '../binance/binance.service';
 import { Model } from 'mongoose';
 import { from, Observable } from 'rxjs';
-import { map, find, filter } from 'rxjs/operators';
+import { map, find, filter, mergeMap } from 'rxjs/operators';
 import { InjectModel } from '@nestjs/mongoose';
 import { ExchangeInfo } from './schemas/ExchangeInfo.schema';
 import { response } from 'express';
@@ -44,15 +44,27 @@ export class ExchangeCoordinatorService {
   }
 
   public getImageByName(name: string): Observable<any> {
-    return this.fetchCMCFullData().pipe(
-      map(entry => {
-        return Object.keys(entry)
-          .map(entradaKey => {
-            return entry[entradaKey];
-          })
-          .find(valorMapeado => valorMapeado.slug == name);
-      }),
-    );
+    return this.fetchCMCFullData()
+      .pipe(
+        map(entry => {
+          return Object.keys(entry)
+            .map(entradaKey => {
+              return entry[entradaKey];
+            })
+            .find(valorMapeado => valorMapeado.slug == name);
+        }),
+      )
+      .pipe(
+        mergeMap(resultado =>
+          this.httpService
+            .get(
+              'https://s2.coinmarketcap.com/static/img/coins/32x32/' +
+                resultado.id +
+                '.png',
+            )
+            .pipe(map(response => response.data)),
+        ),
+      );
   }
 
   public fetchCMCFullData(): Observable<any> {
