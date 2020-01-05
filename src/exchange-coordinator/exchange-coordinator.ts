@@ -55,14 +55,11 @@ export class ExchangeCoordinatorService {
         }),
       )
       .pipe(
-        mergeMap(resultado =>
-          this.httpService
-            .get(
-              'https://s2.coinmarketcap.com/static/img/coins/32x32/' +
-                resultado.id +
-                '.png',
-            )
-            .pipe(map(response => response.data)),
+        map(
+          valor =>
+            'https://s2.coinmarketcap.com/static/img/coins/32x32/' +
+            valor.id +
+            '.png',
         ),
       );
   }
