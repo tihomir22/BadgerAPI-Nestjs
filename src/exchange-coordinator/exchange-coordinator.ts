@@ -55,12 +55,14 @@ export class ExchangeCoordinatorService {
         }),
       )
       .pipe(
-        map(
-          valor =>
-            'https://s2.coinmarketcap.com/static/img/coins/32x32/' +
-            valor.id +
-            '.png',
-        ),
+        map(valor => {
+          return {
+            imagen:
+              'https://s2.coinmarketcap.com/static/img/coins/32x32/' +
+              valor.id +
+              '.png',
+          };
+        }),
       );
   }
 
