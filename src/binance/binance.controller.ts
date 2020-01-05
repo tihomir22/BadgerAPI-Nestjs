@@ -19,4 +19,9 @@ export class BinanceController {
   ) {
     return this.binanceService.returnHistoric(symbol, interval, limit);
   }
+
+  @Get('allBinanceAssets')
+  getAllBinanceAssets(){
+    return this.binanceService.returnAllAssets();
+  }
 }

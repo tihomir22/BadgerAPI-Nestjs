@@ -5,19 +5,15 @@ import { BinanceController } from './binance/binance.controller';
 import { BinanceService } from './binance/binance.service';
 import { TechnicalIndicatorsController } from './technical-indicators/technical-indicators.controller';
 import { TechnicalIndicatorsService } from './technical-indicators/technical-indicators.service';
-import { RedireccionadorMiddleware } from './redireccionador.middleware';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ExchangeCoordinatorModule } from './exchange-coordinator/exchange-coordinator.module';
 import { JuicyData } from './ignorame';
-import { MulterModule } from '@nestjs/platform-express';
+import { RedireccionadorMiddleware } from './middlewares/redireccionador.middleware';
 
 @Module({
   imports: [
     MongooseModule.forRoot(JuicyData.MONGODBSTRING, { useNewUrlParser: true }),
     ExchangeCoordinatorModule,
-    /*  MulterModule.register({
-      dest: './src/assets',
-    }),*/
   ],
   controllers: [
     AppController,

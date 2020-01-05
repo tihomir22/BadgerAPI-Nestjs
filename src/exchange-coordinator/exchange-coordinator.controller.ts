@@ -5,8 +5,10 @@ import {
   Res,
   HttpException,
   Put,
+  Body,
 } from '@nestjs/common';
 import { ExchangeCoordinatorService } from './exchange-coordinator';
+import { ExchangeInfo } from './schemas/ExchangeInfo.schema';
 
 @Controller('exchange-coordinator')
 export class ExchangeCoordinatorController {
@@ -15,6 +17,11 @@ export class ExchangeCoordinatorController {
   @Get('allExchanges')
   returnExchanges() {
     return this.exchangeCordinatorService.fetchAllExchanges();
+  }
+
+  @Put('addExchange')
+  addExchange(@Body() newExchange: ExchangeInfo) {
+    return this.exchangeCordinatorService.inserSomething(newExchange);
   }
 
   @Get('getExchangeIMG/:exchangeName')

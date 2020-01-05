@@ -45,10 +45,11 @@ export class ExchangeCoordinatorService {
     return this.ExchangeInfoModel.find();
   }
 
-  async inserSomething(): Promise<ExchangeInfo> {
+  async inserSomething(exchange: ExchangeInfo): Promise<ExchangeInfo> {
     const createdExchange = new this.ExchangeInfoModel({
-      name: 'yea boi',
-      imageName: 'holy shiet',
+      name: exchange.name,
+      imageName: exchange.imageName,
+      idExchange: exchange.idExchange,
     });
     return await createdExchange.save();
   }
