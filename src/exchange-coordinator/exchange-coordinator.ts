@@ -1,11 +1,12 @@
-import { Injectable, HttpException } from '@nestjs/common';
+import { Injectable, HttpException, HttpService } from '@nestjs/common';
 import { PaqueteIndicadorTecnico } from '../models/PaqueteIndicadorTecnico';
 import { BinanceService } from '../binance/binance.service';
 import { Model } from 'mongoose';
 import { from, Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, find, filter } from 'rxjs/operators';
 import { InjectModel } from '@nestjs/mongoose';
 import { ExchangeInfo } from './schemas/ExchangeInfo.schema';
+import { response } from 'express';
 
 @Injectable()
 export class ExchangeCoordinatorService {
@@ -13,6 +14,7 @@ export class ExchangeCoordinatorService {
     @InjectModel('ExchangeInfo')
     private readonly ExchangeInfoModel: Model<ExchangeInfo>,
     private binance: BinanceService,
+    private readonly httpService: HttpService,
   ) {}
 
   public returnFile(
@@ -39,6 +41,31 @@ export class ExchangeCoordinatorService {
         }
       },
     );
+  }
+
+  public getImageByName(name: string): Observable<any> {
+    return this.fetchCMCFullData().pipe(
+      map(entry => {
+        return Object.keys(entry)
+          .map(entradaKey => {
+            return entry[entradaKey];
+          })
+          .find(valorMapeado => valorMapeado.slug == name);
+      }),
+    );
+  }
+
+  public fetchCMCFullData(): Observable<any> {
+    return this.httpService
+      .get('https://s2.coinmarketcap.com/generated/search/quick_search.json')
+      .pipe(map(response => response.data))
+      .pipe(
+        map(entry => {
+          return Object.keys(entry).map(entradaKey => {
+            return entry[entradaKey];
+          });
+        }),
+      );
   }
 
   public fetchAllExchanges(): Observable<any> {

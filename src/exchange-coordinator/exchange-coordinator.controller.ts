@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { ExchangeCoordinatorService } from './exchange-coordinator';
 import { ExchangeInfo } from './schemas/ExchangeInfo.schema';
+import { find, map, take } from 'rxjs/operators';
 
 @Controller('exchange-coordinator')
 export class ExchangeCoordinatorController {
@@ -31,13 +32,13 @@ export class ExchangeCoordinatorController {
     );
   }
 
+  @Get('fetchFullCMDDATA')
+  returnCMCData() {
+    return this.exchangeCordinatorService.fetchCMCFullData();
+  }
+
   @Get('getExchangeIMG/:exchangeName')
-  returnExchangeIMG(@Param('exchangeName') exchName, @Res() res) {
-    return this.exchangeCordinatorService.returnFile(
-      exchName,
-      '.png',
-      'src/assets',
-      res,
-    );
+  returnExchangeIMG(@Param('exchangeName') exchName) {
+    return this.exchangeCordinatorService.getImageByName(exchName);
   }
 }

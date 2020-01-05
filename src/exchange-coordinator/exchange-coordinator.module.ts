@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, HttpModule } from '@nestjs/common';
 import { ExchangeCoordinatorController } from './exchange-coordinator.controller';
 import { ExchangeCoordinatorService } from './exchange-coordinator';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -14,6 +14,7 @@ import { BinanceModule } from '../binance/binance.module';
         collection: 'ExchangeList',
       },
     ]),
+    HttpModule,
     BinanceModule,
   ],
   controllers: [ExchangeCoordinatorController],
