@@ -54,6 +54,18 @@ export class ExchangeCoordinatorService {
     return await createdExchange.save();
   }
 
+  async returnAssetsFromSpecificExchange(exchangeName: string) {
+    switch (exchangeName.toLowerCase()) {
+      case 'binance':
+        return this.binance.returnAllAssets();
+      default:
+        throw new HttpException(
+          'The exchange ' + exchangeName + ' was not found!',
+          404,
+        );
+    }
+  }
+
   async devolverHistoricoDependendiendoDelEXCHANGE(
     technicalPack: PaqueteIndicadorTecnico,
   ) {

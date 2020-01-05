@@ -24,6 +24,13 @@ export class ExchangeCoordinatorController {
     return this.exchangeCordinatorService.inserSomething(newExchange);
   }
 
+  @Get('getAssets/:exchangeName')
+  returnAssetsFromExchange(@Param('exchangeName') exchName) {
+    return this.exchangeCordinatorService.returnAssetsFromSpecificExchange(
+      exchName,
+    );
+  }
+
   @Get('getExchangeIMG/:exchangeName')
   returnExchangeIMG(@Param('exchangeName') exchName, @Res() res) {
     return this.exchangeCordinatorService.returnFile(
