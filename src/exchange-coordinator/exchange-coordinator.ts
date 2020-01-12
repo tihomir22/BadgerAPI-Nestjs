@@ -2,11 +2,19 @@ import { Injectable, HttpException, HttpService } from '@nestjs/common';
 import { PaqueteIndicadorTecnico } from '../models/PaqueteIndicadorTecnico';
 import { BinanceService } from '../binance/binance.service';
 import { Model } from 'mongoose';
-import { from, Observable } from 'rxjs';
-import { map, find, filter, mergeMap } from 'rxjs/operators';
+import { from, Observable, of, throwError } from 'rxjs';
+import {
+  map,
+  find,
+  filter,
+  mergeMap,
+  flatMap,
+  catchError,
+} from 'rxjs/operators';
 import { InjectModel } from '@nestjs/mongoose';
 import { ExchangeInfo } from './schemas/ExchangeInfo.schema';
-import { response } from 'express';
+
+import * as request from 'request';
 
 @Injectable()
 export class ExchangeCoordinatorService {
@@ -43,7 +51,7 @@ export class ExchangeCoordinatorService {
     );
   }
 
-  public getImageByName(name: string): Observable<any> {
+  public getImageByName(name: string, res: any): Observable<any> {
     return this.fetchCMCFullData()
       .pipe(
         map(entry => {
@@ -55,14 +63,23 @@ export class ExchangeCoordinatorService {
         }),
       )
       .pipe(
-        map(valor => {
-          return {
-            imagen:
+        mergeMap(resultado =>
+          this.httpService
+            .get(
               'https://s2.coinmarketcap.com/static/img/coins/32x32/' +
-              valor.id +
-              '.png',
-          };
-        }),
+                resultado.id +
+                '.png',
+              { responseType: 'arraybuffer' },
+            )
+            .pipe(
+              map(response =>
+                res.send(
+                  Buffer.from(response.data, 'binary').toString('base64'),
+                ),
+              ),
+            ),
+        ),
+        catchError(error => of(res.status(404).send({ message: '' + error }))),
       );
   }
 

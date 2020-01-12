@@ -6,10 +6,13 @@ import {
   HttpException,
   Put,
   Body,
+  Header,
+  Post,
 } from '@nestjs/common';
 import { ExchangeCoordinatorService } from './exchange-coordinator';
 import { ExchangeInfo } from './schemas/ExchangeInfo.schema';
-import { find, map, take } from 'rxjs/operators';
+import { find, map, take, catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 
 @Controller('exchange-coordinator')
 export class ExchangeCoordinatorController {
@@ -38,7 +41,7 @@ export class ExchangeCoordinatorController {
   }
 
   @Get('getExchangeIMG/:exchangeName')
-  returnExchangeIMG(@Param('exchangeName') exchName) {
-    return this.exchangeCordinatorService.getImageByName(exchName);
+  returnExchangeIMGBase64(@Param('exchangeName') exchName, @Res() res) {
+    return this.exchangeCordinatorService.getImageByName(exchName, res);
   }
 }
