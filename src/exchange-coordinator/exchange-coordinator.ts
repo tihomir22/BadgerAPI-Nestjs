@@ -59,7 +59,10 @@ export class ExchangeCoordinatorService {
             .map(entradaKey => {
               return entry[entradaKey];
             })
-            .find(valorMapeado => valorMapeado.slug == name);
+            .find(
+              valorMapeado =>
+                valorMapeado.slug == name || valorMapeado.symbol == name,
+            );
         }),
       )
       .pipe(
