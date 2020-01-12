@@ -11,14 +11,16 @@ export class BinanceService {
 
   async returnAllAssets() {
     try {
-      return (await this.publicClient.exchangeInfo()).symbols.map(simbolo => {
-        return {
-          symbol: simbolo.symbol,
-          estado: simbolo.status,
-          parBase: simbolo.baseAsset,
-          parContra: simbolo.quoteAsset,
-        };
-      });
+      return (await this.publicClient.exchangeInfo()).symbols
+        .filter(symbol => symbol.status != 'BREAK')
+        .map(simbolo => {
+          return {
+            symbol: simbolo.symbol,
+            estado: simbolo.status,
+            parBase: simbolo.baseAsset,
+            parContra: simbolo.quoteAsset,
+          };
+        });
     } catch (error) {
       this.throwBinanceError(error);
     }
