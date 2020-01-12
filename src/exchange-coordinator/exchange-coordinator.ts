@@ -61,7 +61,8 @@ export class ExchangeCoordinatorService {
             })
             .find(
               valorMapeado =>
-                valorMapeado.slug == name || valorMapeado.symbol == name,
+                valorMapeado.slug.toLowerCase() == name.toLowerCase() ||
+                valorMapeado.symbol.toLowerCase() == name.toLowerCase(),
             );
         }),
       )
