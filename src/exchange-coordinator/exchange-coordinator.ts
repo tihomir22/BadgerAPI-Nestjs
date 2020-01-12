@@ -77,6 +77,7 @@ export class ExchangeCoordinatorService {
                   imagen: Buffer.from(response.data, 'binary').toString(
                     'base64',
                   ),
+                  extension: 'base64',
                 }),
               ),
             ),
