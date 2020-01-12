@@ -41,6 +41,7 @@ export class ExchangeCoordinatorController {
   }
 
   @Get('getExchangeIMG/:exchangeName')
+  @Header('Content-Type', 'application/json')
   returnExchangeIMGBase64(@Param('exchangeName') exchName, @Res() res) {
     return this.exchangeCordinatorService.getImageByName(exchName, res);
   }

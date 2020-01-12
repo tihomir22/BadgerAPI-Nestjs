@@ -73,9 +73,11 @@ export class ExchangeCoordinatorService {
             )
             .pipe(
               map(response =>
-                res.send(
-                  Buffer.from(response.data, 'binary').toString('base64'),
-                ),
+                res.send({
+                  imagen: Buffer.from(response.data, 'binary').toString(
+                    'base64',
+                  ),
+                }),
               ),
             ),
         ),
