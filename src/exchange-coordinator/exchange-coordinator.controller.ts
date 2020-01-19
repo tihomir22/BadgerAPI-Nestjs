@@ -40,9 +40,13 @@ export class ExchangeCoordinatorController {
     return this.exchangeCordinatorService.fetchCMCFullData();
   }
 
-  @Get('getExchangeIMG/:exchangeName')
+  @Get('getExchangeIMG/:exchangeName/:size')
   @Header('Content-Type', 'application/json')
-  returnExchangeIMGBase64(@Param('exchangeName') exchName, @Res() res) {
-    return this.exchangeCordinatorService.getImageByName(exchName, res);
+  returnExchangeIMGBase64(
+    @Param('exchangeName') exchName,
+    @Param('size') size,
+    @Res() res,
+  ) {
+    return this.exchangeCordinatorService.getImageByName(exchName, res, size);
   }
 }

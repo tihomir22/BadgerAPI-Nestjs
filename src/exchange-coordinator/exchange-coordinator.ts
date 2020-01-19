@@ -15,6 +15,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { ExchangeInfo } from './schemas/ExchangeInfo.schema';
 
 import * as request from 'request';
+import { ExchangeConstants } from './constants/ExchangeConstants';
 
 @Injectable()
 export class ExchangeCoordinatorService {
@@ -51,43 +52,63 @@ export class ExchangeCoordinatorService {
     );
   }
 
-  public getImageByName(name: string, res: any): Observable<any> {
-    return this.fetchCMCFullData()
-      .pipe(
-        map(entry => {
-          return Object.keys(entry)
-            .map(entradaKey => {
-              return entry[entradaKey];
-            })
-            .find(
-              valorMapeado =>
-                valorMapeado.slug.toLowerCase() == name.toLowerCase() ||
-                valorMapeado.symbol.toLowerCase() == name.toLowerCase(),
-            );
-        }),
-      )
-      .pipe(
-        mergeMap(resultado =>
-          this.httpService
-            .get(
-              'https://s2.coinmarketcap.com/static/img/coins/32x32/' +
-                resultado.id +
-                '.png',
-              { responseType: 'arraybuffer' },
-            )
-            .pipe(
-              map(response =>
-                res.send({
-                  imagen: Buffer.from(response.data, 'binary').toString(
-                    'base64',
-                  ),
-                  extension: 'base64',
-                }),
+  public getImageByName(
+    name: string,
+    res: any,
+    photoSizePx: number,
+  ): Observable<any> {
+    if (ExchangeConstants.isValidImageSize(photoSizePx)) {
+      return this.fetchCMCFullData()
+        .pipe(
+          map(entry => {
+            return Object.keys(entry)
+              .map(entradaKey => {
+                return entry[entradaKey];
+              })
+              .find(
+                valorMapeado =>
+                  valorMapeado.slug.toLowerCase() == name.toLowerCase() ||
+                  valorMapeado.symbol.toLowerCase() == name.toLowerCase(),
+              );
+          }),
+        )
+        .pipe(
+          mergeMap(resultado =>
+            this.httpService
+              .get(
+                'https://s2.coinmarketcap.com/static/img/coins/' +
+                  photoSizePx +
+                  'x' +
+                  photoSizePx +
+                  '/' +
+                  resultado.id +
+                  '.png',
+                { responseType: 'arraybuffer' },
+              )
+              .pipe(
+                map(response =>
+                  res.send({
+                    imagen: Buffer.from(response.data, 'binary').toString(
+                      'base64',
+                    ),
+                    extension: 'base64',
+                  }),
+                ),
               ),
-            ),
-        ),
-        catchError(error => of(res.status(404).send({ message: '' + error }))),
+          ),
+          catchError(error =>
+            of(res.status(404).send({ message: '' + error })),
+          ),
+        );
+    } else {
+      of(
+        res
+          .status(404)
+          .send({
+            message: '' + ExchangeConstants.NON_VALID_IMAGE_SIZE_ERROR_MESSAGE,
+          }),
       );
+    }
   }
 
   public fetchCMCFullData(): Observable<any> {
