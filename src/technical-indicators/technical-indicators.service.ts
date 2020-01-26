@@ -88,6 +88,9 @@ export class TechnicalIndicatorsService {
   ): Array<Array<any>> {
     let res = [];
     keys.forEach(key => {
+      if (key == 'real') {
+        key = 'close';
+      }
       let restmp = registroHistorico.map(historicRegistry =>
         parseFloat(historicRegistry[key] + ''),
       );
