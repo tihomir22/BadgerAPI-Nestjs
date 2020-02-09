@@ -16,3 +16,4 @@ export interface IndicatorParams {
   includeHistoric: boolean;
   indicatorParams: Array<any>;
 }
+

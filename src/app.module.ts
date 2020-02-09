@@ -9,16 +9,20 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ExchangeCoordinatorModule } from './exchange-coordinator/exchange-coordinator.module';
 import { JuicyData } from './ignorame';
 import { RedireccionadorMiddleware } from './middlewares/redireccionador.middleware';
+import { ConditionController } from './condition/condition.controller';
+import { ConditionModule } from './condition/condition.module';
 
 @Module({
   imports: [
     MongooseModule.forRoot(JuicyData.MONGODBSTRING, { useNewUrlParser: true }),
     ExchangeCoordinatorModule,
+    ConditionModule,
   ],
   controllers: [
     AppController,
     BinanceController,
     TechnicalIndicatorsController,
+    ConditionController,
   ],
   providers: [AppService, BinanceService, TechnicalIndicatorsService],
 })
