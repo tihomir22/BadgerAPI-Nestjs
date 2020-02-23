@@ -10,4 +10,9 @@ export class ConditionController {
   addNewCondition(@Body() newCondition: ConditionPack) {
     return this.conditionService.guardarCondicion(newCondition);
   }
+
+  @Post('backtest')
+  backtestCondition(@Body() newCondition: ConditionPack) {
+    return this.conditionService.backtestCondition(newCondition);
+  }
 }

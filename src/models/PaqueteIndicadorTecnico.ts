@@ -1,3 +1,5 @@
+import { HistoricRegistry } from './HistoricRegistry';
+
 export interface PaqueteIndicadorTecnico {
   exchange: string;
   historicParams: HistoricParams;
@@ -17,3 +19,12 @@ export interface IndicatorParams {
   indicatorParams: Array<any>;
 }
 
+export interface BacktestedConditionModel {
+  fulfilled: Array<boolean>;
+  extraData: ServerResponseIndicator;
+}
+
+export interface ServerResponseIndicator {
+  historic: Array<HistoricRegistry>;
+  technical: Array<number>;
+}

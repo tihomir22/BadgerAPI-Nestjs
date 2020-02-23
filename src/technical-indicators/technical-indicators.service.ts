@@ -1,6 +1,7 @@
 import { Injectable, HttpException } from '@nestjs/common';
 import { HistoricRegistry } from '../models/HistoricRegistry';
 import { IndicatorParams } from '../models/PaqueteIndicadorTecnico';
+import { concat, times } from 'lodash';
 
 @Injectable()
 export class TechnicalIndicatorsService {
@@ -32,6 +33,19 @@ export class TechnicalIndicatorsService {
     parametros: IndicatorParams,
     historicRegistry: Array<HistoricRegistry>,
   ) {
+    if (this.comprobarParametros(indicatorName, parametros)) {
+      return this.ejecutarCalculoDeIndicador(
+        indicatorName,
+        parametros,
+        historicRegistry,
+      );
+    }
+  }
+
+  private comprobarParametros(
+    indicatorName: string,
+    parametros: IndicatorParams,
+  ): boolean {
     try {
       if (
         this.publicClient.indicators[indicatorName].inputs ==
@@ -41,18 +55,7 @@ export class TechnicalIndicatorsService {
           this.publicClient.indicators[indicatorName].options ==
           parametros.indicatorParams.length
         ) {
-          return {
-            historic: parametros.includeHistoric ? historicRegistry : [],
-            technical: await this.publicClient.indicators[
-              indicatorName
-            ].indicator(
-              this.obtenerArrayDeArrays(
-                parametros.keysNeeded,
-                historicRegistry,
-              ),
-              parametros.indicatorParams,
-            ),
-          };
+          return true;
         } else {
           throw new HttpException(
             'You have introduced an incorrect number of options, ' +
@@ -80,6 +83,44 @@ export class TechnicalIndicatorsService {
     } catch (error) {
       throw new HttpException(error, 400);
     }
+  }
+
+  async ejecutarCalculoDeIndicador(
+    indicatorName: string,
+    parametros: IndicatorParams,
+    historicRegistry: Array<HistoricRegistry>,
+  ) {
+    let arrayHistorico = parametros.includeHistoric ? historicRegistry : [];
+    let arrayIndicadorTecnico = await this.publicClient.indicators[
+      indicatorName
+    ].indicator(
+      this.obtenerArrayDeArrays(parametros.keysNeeded, historicRegistry),
+      parametros.indicatorParams,
+    );
+    if (arrayHistorico.length > 0) {
+      arrayIndicadorTecnico = concat(
+        this.generarArrayDeElementosVacios(
+          null,
+          arrayHistorico.length - arrayIndicadorTecnico[0].length,
+        ),
+        ...arrayIndicadorTecnico,
+      );
+    }
+    return {
+      historic: arrayHistorico,
+      technical: arrayIndicadorTecnico,
+    };
+  }
+
+  private generarArrayDeElementosVacios(
+    elementoVacio: any,
+    numeroDeElementos: number,
+  ) {
+    let res = [];
+    times(numeroDeElementos, () => {
+      res.push(elementoVacio);
+    });
+    return res;
   }
 
   private obtenerArrayDeArrays(

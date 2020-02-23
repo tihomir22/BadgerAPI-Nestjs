@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TechnicalIndicatorsService } from './technical-indicators.service';
 import { TechnicalIndicatorsController } from './technical-indicators.controller';
-import { ExchangeCoordinatorModule } from 'src/exchange-coordinator/exchange-coordinator.module';
+import { ExchangeCoordinatorModule } from '../exchange-coordinator/exchange-coordinator.module';
 
 @Module({
   imports: [ExchangeCoordinatorModule],
