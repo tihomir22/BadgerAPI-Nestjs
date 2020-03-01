@@ -46,19 +46,19 @@ export class ConditionService {
         for (let i = 0; i < indicatorData.extraData.technical.length; i++) {
           const registroTecnico = indicatorData.extraData.technical[i];
 
-          switch (condicion.trigger) {
+          switch (condicion.enter.activateWhen) {
             case 'above':
-              if (registroTecnico >= condicion.value) {
+              if (registroTecnico >= condicion.enter.value) {
                 detectadoCumplimiento = true;
               }
               break;
             case 'below':
-              if (registroTecnico <= condicion.value) {
+              if (registroTecnico <= condicion.enter.value) {
                 detectadoCumplimiento = true;
               }
               break;
             case 'equals':
-              if (registroTecnico === condicion.value) {
+              if (registroTecnico === condicion.enter.value) {
                 detectadoCumplimiento = true;
               }
               break;

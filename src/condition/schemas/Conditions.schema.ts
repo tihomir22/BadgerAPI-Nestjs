@@ -9,12 +9,23 @@ export const ConditionInfoSchema = new mongoose.Schema({
 
 export interface ConditionPack {
   user: string;
-  conditionConfig: Array<ConditionParams>;
+  conditionConfig: Array<FullConditionsModel>;
   indicatorConfig: PaqueteIndicadorTecnico;
 }
 
-export interface ConditionParams {
-  trigger: string;
-  event: string;
+export interface FullConditionsModel {
+  name: string;
+  enter: EnterConditionModel;
+  exit: ExitConditionModel;
+}
+
+export interface EnterConditionModel {
+  activateWhen: string;
+  doWhat: string;
+  value: any;
+}
+
+export interface ExitConditionModel {
+  closeWhen: string;
   value: any;
 }
