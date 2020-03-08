@@ -20,8 +20,18 @@ export interface IndicatorParams {
 }
 
 export interface BacktestedConditionModel {
-  fulfilled: Array<boolean>;
+  fulfilled: Array<FullfillmentModel>;
   extraData: ServerResponseIndicator;
+}
+
+export interface FullfillmentModel {
+  id: any;
+  priceEnter: number;
+  indicatorEnter: number;
+  dateEnter: Date;
+  priceExit: number;
+  indicatorExit: number;
+  dateExit: Date;
 }
 
 export interface ServerResponseIndicator {

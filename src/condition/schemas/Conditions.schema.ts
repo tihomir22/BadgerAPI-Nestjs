@@ -20,12 +20,13 @@ export interface FullConditionsModel {
 }
 
 export interface EnterConditionModel {
-  activateWhen: string;
+  activateWhen: 'below' | 'above' | 'equals';
   doWhat: string;
-  value: any;
+  value: number;
 }
 
 export interface ExitConditionModel {
-  closeWhen: string;
-  value: any;
+  typeExit: 'indicator' | 'price';
+  closeWhen: 'below' | 'above' | 'equals';
+  value: number;
 }
