@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Body, Post, Res } from '@nestjs/common';
 import { CandleChartInterval } from 'binance-api-node';
 import { BinanceService } from './binance.service';
 
@@ -12,16 +12,17 @@ export class BinanceController {
   }
 
   @Get('historic/:symbol/:interval')
-  getHistoricCandles(
-    @Param('symbol') symbol: string,
-    @Param('interval') interval: CandleChartInterval,
-    @Param('limit') limit: number,
-  ) {
+  getHistoricCandles(@Param('symbol') symbol: string, @Param('interval') interval: CandleChartInterval, @Param('limit') limit: number) {
     return this.binanceService.returnHistoric(symbol, interval, limit);
   }
 
   @Get('allBinanceAssets')
-  getAllBinanceAssets(){
+  getAllBinanceAssets() {
     return this.binanceService.returnAllAssets();
+  }
+
+  @Post('getAccountInfo')
+  getAccountInfo(@Body() body, @Res() res) {
+    return this.binanceService.getAccountInfo(body, res);
   }
 }

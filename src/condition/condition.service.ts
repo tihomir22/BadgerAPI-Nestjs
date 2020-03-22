@@ -1,20 +1,53 @@
 import { Injectable, HttpException } from '@nestjs/common';
-import { ConditionPack, FullConditionsModel } from './schemas/Conditions.schema';
+import { FullConditionsModel, ConditionPack } from './schemas/Conditions.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ExchangeCoordinatorService } from '../exchange-coordinator/exchange-coordinator';
 import { TechnicalIndicatorsService } from '../technical-indicators/technical-indicators.service';
 import { ServerResponseIndicator, BacktestedConditionModel } from '../models/PaqueteIndicadorTecnico';
 import { clone } from 'lodash';
+import { HistoricRegistry } from 'src/models/HistoricRegistry';
 
 @Injectable()
 export class ConditionService {
   constructor(
-    @InjectModel('ConditionPack')
-    private readonly conditionModel: Model<ConditionPack>,
+    @InjectModel('ConditionPack') private conditionModel: Model<ConditionPack>,
     private exchangeCoordinator: ExchangeCoordinatorService,
     private indicatorService: TechnicalIndicatorsService,
   ) {}
+
+  async recoverAllConditionsByUserId(encondedUserID: any) {
+    return await this.conditionModel.find({ user: decodeURIComponent(encondedUserID) }).exec();
+  }
+
+  async returnAll() {
+    return await this.conditionModel.find();
+  }
+
+  async returnConditionsByTimeFrame(
+    timeFrame: '1m' | '3m' | '5m' | '15m' | '30m' | '1h' | '2h' | '4h' | '6h' | '8h' | '12h' | '1d' | '3d' | '1w' | '1M',
+  ) {
+    return await this.conditionModel.find({ 'indicatorConfig.historicParams.interval': timeFrame });
+  }
+
+  async changeState(encondedConditionId: any, conditionState: string) {
+    let id = Number.parseInt(encondedConditionId);
+    let state = conditionState;
+    if (state == 'started' || state == 'stopped') {
+      return await this.conditionModel.findOneAndUpdate(
+        {
+          'conditionConfig.id': id,
+        },
+        {
+          $set: {
+            'conditionConfig.$.state': state,
+          },
+        },
+      );
+    } else {
+      throw new HttpException(`Non valid condition state ${state}`, 400);
+    }
+  }
 
   async guardarCondicion(condicion: ConditionPack) {
     if (condicion.conditionConfig && condicion.indicatorConfig && condicion.user) {
@@ -25,21 +58,23 @@ export class ConditionService {
       });
       return await createdCondition.save();
     } else {
-      throw new HttpException('Incorrect condition configuration!', 404);
+      throw new HttpException('Incorrect condition configuration!', 400);
     }
+  }
+
+  async getLatestTechnicalAndHistoricDataFromCondition(condicion: ConditionPack): Promise<BacktestedConditionModel> {
+    return {
+      fulfilled: [],
+      extraData: await this.indicatorService.evaluateIndicator(
+        condicion.indicatorConfig.indicatorParams,
+        await (this.exchangeCoordinator.devolverHistoricoDependendiendoDelEXCHANGE(condicion.indicatorConfig) as any),
+      ),
+    };
   }
 
   async backtestCondition(condicion: ConditionPack) {
     if (condicion.conditionConfig && condicion.indicatorConfig && condicion.user) {
-      // console.log(condicion);
-
-      let indicatorData: BacktestedConditionModel = {
-        fulfilled: [],
-        extraData: await this.indicatorService.evaluateIndicator(
-          condicion.indicatorConfig.indicatorParams,
-          await (this.exchangeCoordinator.devolverHistoricoDependendiendoDelEXCHANGE(condicion.indicatorConfig) as any),
-        ),
-      };
+      let indicatorData: BacktestedConditionModel = await this.getLatestTechnicalAndHistoricDataFromCondition(condicion);
 
       condicion.conditionConfig.forEach(condicion => {
         let res: Array<any> = this.detectIfConditionAccomplished(condicion, indicatorData);
@@ -160,6 +195,31 @@ export class ConditionService {
     return [condicion, technicalData];
   }
 
+  public detectIfConditionIsAccomplishedWithSingleEntry(
+    condicion: FullConditionsModel,
+    technicalEntry: number,
+    detectadoCumplimiento: boolean,
+  ) {
+    switch (condicion.enter.activateWhen) {
+      case 'above':
+        if (technicalEntry >= condicion.enter.value) {
+          detectadoCumplimiento = true;
+        }
+        break;
+      case 'below':
+        if (technicalEntry <= condicion.enter.value) {
+          detectadoCumplimiento = true;
+        }
+        break;
+      case 'equals':
+        if (technicalEntry === condicion.enter.value) {
+          detectadoCumplimiento = true;
+        }
+        break;
+    }
+    return detectadoCumplimiento;
+  }
+
   private detectIfConditionAccomplished(condicion: FullConditionsModel, technicalData: BacktestedConditionModel): Array<any> {
     let detectadoCumplimiento = false;
     let seEstaCumpliendoLaCondicion = false;
@@ -167,24 +227,7 @@ export class ConditionService {
     for (let i = 0; i < technicalData.extraData.technical.length; i++) {
       const registroTecnico = technicalData.extraData.technical[i];
       if (registroTecnico != null) {
-        switch (condicion.enter.activateWhen) {
-          case 'above':
-            if (registroTecnico >= condicion.enter.value) {
-              detectadoCumplimiento = true;
-            }
-            break;
-          case 'below':
-            if (registroTecnico <= condicion.enter.value) {
-              detectadoCumplimiento = true;
-            }
-            break;
-          case 'equals':
-            if (registroTecnico === condicion.enter.value) {
-              detectadoCumplimiento = true;
-            }
-            break;
-        }
-
+        detectadoCumplimiento = this.detectIfConditionIsAccomplishedWithSingleEntry(condicion, registroTecnico, detectadoCumplimiento);
         let resdetectIfConditionAccomplishmentEnded: Array<any> = this.detectIfConditionAccomplishmentEnded(
           detectadoCumplimiento,
           seEstaCumpliendoLaCondicion,

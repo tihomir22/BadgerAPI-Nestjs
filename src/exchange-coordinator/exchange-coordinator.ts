@@ -3,35 +3,24 @@ import { PaqueteIndicadorTecnico } from '../models/PaqueteIndicadorTecnico';
 import { BinanceService } from '../binance/binance.service';
 import { Model } from 'mongoose';
 import { from, Observable, of, throwError } from 'rxjs';
-import {
-  map,
-  find,
-  filter,
-  mergeMap,
-  flatMap,
-  catchError,
-} from 'rxjs/operators';
+import { map, find, filter, mergeMap, flatMap, catchError } from 'rxjs/operators';
 import { InjectModel } from '@nestjs/mongoose';
 import { ExchangeInfo } from './schemas/ExchangeInfo.schema';
 
 import * as request from 'request';
 import { ExchangeConstants } from './constants/ExchangeConstants';
+import { PrivateRequestsKeysWithExchange } from 'src/models/PrivateRequestsModel';
 
 @Injectable()
 export class ExchangeCoordinatorService {
   constructor(
     @InjectModel('ExchangeInfo')
-    private readonly ExchangeInfoModel: Model<ExchangeInfo>,
+    private ExchangeInfoModel: Model<ExchangeInfo>,
     private binance: BinanceService,
     private readonly httpService: HttpService,
   ) {}
 
-  public returnFile(
-    fileName: string,
-    extension: string,
-    rootPath: string,
-    res: any,
-  ) {
+  public returnFile(fileName: string, extension: string, rootPath: string, res: any) {
     return res.sendFile(
       fileName.toLowerCase() + extension,
       {
@@ -39,24 +28,13 @@ export class ExchangeCoordinatorService {
       },
       error => {
         if (error) {
-          res
-            .status(404)
-            .send(
-              new HttpException(
-                'The ' + fileName + extension + ' was not found',
-                404,
-              ),
-            );
+          res.status(404).send(new HttpException('The ' + fileName + extension + ' was not found', 404));
         }
       },
     );
   }
 
-  public getImageByName(
-    name: string,
-    res: any,
-    photoSizePx: number,
-  ): Observable<any> {
+  public getImageByName(name: string, res: any, photoSizePx: number): Observable<any> {
     if (ExchangeConstants.isValidImageSize(photoSizePx)) {
       return this.fetchCMCFullData()
         .pipe(
@@ -67,46 +45,32 @@ export class ExchangeCoordinatorService {
               })
               .find(
                 valorMapeado =>
-                  valorMapeado.slug.toLowerCase() == name.toLowerCase() ||
-                  valorMapeado.symbol.toLowerCase() == name.toLowerCase(),
+                  valorMapeado.slug.toLowerCase() == name.toLowerCase() || valorMapeado.symbol.toLowerCase() == name.toLowerCase(),
               );
           }),
         )
         .pipe(
           mergeMap(resultado =>
             this.httpService
-              .get(
-                'https://s2.coinmarketcap.com/static/img/coins/' +
-                  photoSizePx +
-                  'x' +
-                  photoSizePx +
-                  '/' +
-                  resultado.id +
-                  '.png',
-                { responseType: 'arraybuffer' },
-              )
+              .get('https://s2.coinmarketcap.com/static/img/coins/' + photoSizePx + 'x' + photoSizePx + '/' + resultado.id + '.png', {
+                responseType: 'arraybuffer',
+              })
               .pipe(
                 map(response =>
                   res.send({
-                    imagen: Buffer.from(response.data, 'binary').toString(
-                      'base64',
-                    ),
+                    imagen: Buffer.from(response.data, 'binary').toString('base64'),
                     extension: 'base64',
                   }),
                 ),
               ),
           ),
-          catchError(error =>
-            of(res.status(404).send({ message: '' + error })),
-          ),
+          catchError(error => of(res.status(404).send({ message: '' + error }))),
         );
     } else {
       of(
-        res
-          .status(404)
-          .send({
-            message: '' + ExchangeConstants.NON_VALID_IMAGE_SIZE_ERROR_MESSAGE,
-          }),
+        res.status(404).send({
+          message: '' + ExchangeConstants.NON_VALID_IMAGE_SIZE_ERROR_MESSAGE,
+        }),
       );
     }
   }
@@ -124,7 +88,7 @@ export class ExchangeCoordinatorService {
       );
   }
 
-  public fetchAllExchanges(): Observable<any> {
+  public fetchAllExchanges() {
     return this.ExchangeInfoModel.find();
   }
 
@@ -137,21 +101,25 @@ export class ExchangeCoordinatorService {
     return await createdExchange.save();
   }
 
+  async returnAccountInfoFromSpecificExchange(data: PrivateRequestsKeysWithExchange, res: any) {
+    switch (data.exchange.toLowerCase()) {
+      case 'binance':
+        return this.binance.getAccountInfo({ public: data.public, private: data.private }, res);
+      default:
+        throw new HttpException('The exchange ' + data.exchange + ' was not found!', 404);
+    }
+  }
+
   async returnAssetsFromSpecificExchange(exchangeName: string) {
     switch (exchangeName.toLowerCase()) {
       case 'binance':
         return this.binance.returnAllAssets();
       default:
-        throw new HttpException(
-          'The exchange ' + exchangeName + ' was not found!',
-          404,
-        );
+        throw new HttpException('The exchange ' + exchangeName + ' was not found!', 404);
     }
   }
 
-  async devolverHistoricoDependendiendoDelEXCHANGE(
-    technicalPack: PaqueteIndicadorTecnico,
-  ) {
+  async devolverHistoricoDependendiendoDelEXCHANGE(technicalPack: PaqueteIndicadorTecnico) {
     switch (technicalPack.exchange.toLowerCase()) {
       case 'binance':
         return await this.binance.returnHistoric(
@@ -160,10 +128,7 @@ export class ExchangeCoordinatorService {
           technicalPack.historicParams.limit,
         );
       default:
-        throw new HttpException(
-          'The exchange ' + technicalPack.exchange + ' was not found!',
-          404,
-        );
+        throw new HttpException('The exchange ' + technicalPack.exchange + ' was not found!', 404);
     }
   }
 }

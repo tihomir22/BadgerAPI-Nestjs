@@ -7,7 +7,7 @@ export const ConditionInfoSchema = new mongoose.Schema({
   indicatorConfig: {},
 });
 
-export interface ConditionPack {
+export interface ConditionPack extends mongoose.Document {
   user: string;
   conditionConfig: Array<FullConditionsModel>;
   indicatorConfig: PaqueteIndicadorTecnico;
@@ -15,6 +15,7 @@ export interface ConditionPack {
 
 export interface FullConditionsModel {
   name: string;
+  state?: 'started' | 'stopped';
   enter: EnterConditionModel;
   exit: ExitConditionModel;
 }
@@ -29,4 +30,9 @@ export interface ExitConditionModel {
   typeExit: 'indicator' | 'price';
   closeWhen: 'below' | 'above' | 'equals';
   value: number;
+}
+
+export interface ChangeStateModel {
+  id: number;
+  state: 'started' | 'stopped';
 }

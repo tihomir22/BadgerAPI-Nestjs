@@ -6,7 +6,7 @@ export const ExchangeInfoSchema = new mongoose.Schema({
   idExchange: String,
 });
 
-export interface ExchangeInfo {
+export interface ExchangeInfo extends mongoose.Document {
   name: string;
   imageName: string;
   idExchange: string;
