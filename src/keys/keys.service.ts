@@ -10,10 +10,23 @@ export class KeysService {
   async addNewKey(key: UserKey) {
     const createKey = new this.userKeyModel({
       user: key.user,
+      name: key.name,
       exchangeID: key.exchangeID,
       publicK: key.publicK,
       privateK: key.privateK,
     });
     return await createKey.save();
+  }
+
+  async updateKey(key: UserKey) {
+    return await this.userKeyModel.findByIdAndUpdate(key._id, key);
+  }
+
+  async returnKeysByUserID(userId: any) {
+    return await this.userKeyModel.find({ user: userId });
+  }
+
+  async deleteById(idEnty: any) {
+    return await this.userKeyModel.findOneAndDelete({ _id: idEnty });
   }
 }

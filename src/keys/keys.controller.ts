@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Delete } from '@nestjs/common';
 import { UserKey } from './schemas/UserKeys.schema';
 import { KeysService } from './keys.service';
 
@@ -8,6 +8,20 @@ export class KeysController {
 
   @Post('addNew')
   addNewKey(@Body() newKey: UserKey) {
-      return this.keyService.addNewKey(newKey)
+    return this.keyService.addNewKey(newKey);
+  }
+  @Post('updateKey')
+  updateKey(@Body() oldKey: UserKey) {
+    return this.keyService.updateKey(oldKey);
+  }
+
+  @Delete('deleteById/:id')
+  deleteById(@Param('id') id: any) {
+    return this.keyService.deleteById(id);
+  }
+
+  @Get('getUserKeys/:user')
+  getKeys(@Param('user') user: string) {
+    return this.keyService.returnKeysByUserID(user);
   }
 }
