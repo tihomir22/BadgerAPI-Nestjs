@@ -11,14 +11,15 @@ export class BinanceService {
     return publicClient.ping();
   }
 
-  async getAccountInfo(keys: PrivateRequestsKeys, res: any) {
-    try {
-      let publicClient = Binance({ apiKey: this.crypto.decryptTXT(keys.public), apiSecret: this.crypto.decryptTXT(keys.private) });
-      let accountDetails = await publicClient.accountInfo();
-      res.send(accountDetails);
-    } catch (error) {
-      res.status(400).send(new HttpException(error.message, 400));
-    }
+  async getAccountInfo(keys: PrivateRequestsKeys) {
+    let apiKey = this.crypto.decryptTXT(keys.public);
+    let privateKey = this.crypto.decryptTXT(keys.private);
+    let publicClient = Binance({ apiKey: apiKey, apiSecret: privateKey });
+    return await publicClient.accountInfo();
+  }
+
+  async getExchangeInfo() {
+    return await Binance().exchangeInfo();
   }
 
   async returnAllAssets() {

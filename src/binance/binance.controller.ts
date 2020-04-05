@@ -23,6 +23,6 @@ export class BinanceController {
 
   @Post('getAccountInfo')
   getAccountInfo(@Body() body, @Res() res) {
-    return this.binanceService.getAccountInfo(body, res);
+    return this.binanceService.getAccountInfo(body);
   }
 }

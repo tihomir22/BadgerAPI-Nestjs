@@ -49,6 +49,20 @@ export class ConditionService {
     }
   }
 
+  async changeFundingAsset(encondedConditionId: any, fundingAsset: string) {
+    let id = Number.parseInt(encondedConditionId);
+    return await this.conditionModel.findOneAndUpdate(
+      {
+        'conditionConfig.id': id,
+      },
+      {
+        $set: {
+          'conditionConfig.$.fundingAsset': fundingAsset,
+        },
+      },
+    );
+  }
+
   async guardarCondicion(condicion: ConditionPack) {
     if (condicion.conditionConfig && condicion.indicatorConfig && condicion.user) {
       const createdCondition = new this.conditionModel({
@@ -195,29 +209,26 @@ export class ConditionService {
     return [condicion, technicalData];
   }
 
-  public detectIfConditionIsAccomplishedWithSingleEntry(
-    condicion: FullConditionsModel,
-    technicalEntry: number,
-    detectadoCumplimiento: boolean,
-  ) {
+  public detectIfConditionIsAccomplishedWithSingleEntry(condicion: FullConditionsModel, technicalEntry: number) {
+    let res = false;
     switch (condicion.enter.activateWhen) {
       case 'above':
         if (technicalEntry >= condicion.enter.value) {
-          detectadoCumplimiento = true;
+          res = true;
         }
         break;
       case 'below':
         if (technicalEntry <= condicion.enter.value) {
-          detectadoCumplimiento = true;
+          res = true;
         }
         break;
       case 'equals':
         if (technicalEntry === condicion.enter.value) {
-          detectadoCumplimiento = true;
+          res = true;
         }
         break;
     }
-    return detectadoCumplimiento;
+    return res;
   }
 
   private detectIfConditionAccomplished(condicion: FullConditionsModel, technicalData: BacktestedConditionModel): Array<any> {
@@ -227,7 +238,7 @@ export class ConditionService {
     for (let i = 0; i < technicalData.extraData.technical.length; i++) {
       const registroTecnico = technicalData.extraData.technical[i];
       if (registroTecnico != null) {
-        detectadoCumplimiento = this.detectIfConditionIsAccomplishedWithSingleEntry(condicion, registroTecnico, detectadoCumplimiento);
+        detectadoCumplimiento = this.detectIfConditionIsAccomplishedWithSingleEntry(condicion, registroTecnico);
         let resdetectIfConditionAccomplishmentEnded: Array<any> = this.detectIfConditionAccomplishmentEnded(
           detectadoCumplimiento,
           seEstaCumpliendoLaCondicion,

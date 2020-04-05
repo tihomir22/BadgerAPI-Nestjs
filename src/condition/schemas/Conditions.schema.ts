@@ -16,6 +16,7 @@ export interface ConditionPack extends mongoose.Document {
 export interface FullConditionsModel {
   name: string;
   state?: 'started' | 'stopped';
+  fundingAsset?: string;
   enter: EnterConditionModel;
   exit: ExitConditionModel;
 }
@@ -35,4 +36,9 @@ export interface ExitConditionModel {
 export interface ChangeStateModel {
   id: number;
   state: 'started' | 'stopped';
+}
+
+export interface ChangeFundingAsset {
+  id: number;
+  fundingAsset: string;
 }

@@ -10,6 +10,7 @@ import { ExchangeInfo } from './schemas/ExchangeInfo.schema';
 import * as request from 'request';
 import { ExchangeConstants } from './constants/ExchangeConstants';
 import { PrivateRequestsKeysWithExchange } from 'src/models/PrivateRequestsModel';
+import { Account } from 'binance-api-node';
 
 @Injectable()
 export class ExchangeCoordinatorService {
@@ -101,12 +102,21 @@ export class ExchangeCoordinatorService {
     return await createdExchange.save();
   }
 
-  async returnAccountInfoFromSpecificExchange(data: PrivateRequestsKeysWithExchange, res: any) {
+  async returnAccountInfoFromSpecificExchange(data: PrivateRequestsKeysWithExchange): Promise<Account> {
     switch (data.exchange.toLowerCase()) {
       case 'binance':
-        return this.binance.getAccountInfo({ public: data.public, private: data.private }, res);
+        return this.binance.getAccountInfo({ public: data.public, private: data.private });
       default:
         throw new HttpException('The exchange ' + data.exchange + ' was not found!', 404);
+    }
+  }
+  //Public
+  async returnExchangeInfoFromSpecificExchange(exchange: string) {
+    switch (exchange.toLowerCase()) {
+      case 'binance':
+        return this.binance.getExchangeInfo();
+      default:
+        throw new HttpException('The exchange ' + exchange + ' was not found!', 404);
     }
   }
 

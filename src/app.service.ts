@@ -6,7 +6,8 @@ import { timer } from 'rxjs';
 @Injectable()
 export class AppService {
   private readonly logger = new Logger(AppService.name);
-  constructor(private condicionService: ConditionService) {}
+  constructor(private condicionService: ConditionService) {
+  }
 
   @Cron(CronExpression.EVERY_MINUTE)
   handleCron1MIN() {

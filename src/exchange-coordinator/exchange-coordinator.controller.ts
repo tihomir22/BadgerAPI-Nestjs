@@ -18,8 +18,8 @@ export class ExchangeCoordinatorController {
   }
 
   @Post('getAccountInfo')
-  getAccountInfo(@Body() data: PrivateRequestsKeysWithExchange, @Res() res) {
-    return this.exchangeCordinatorService.returnAccountInfoFromSpecificExchange(data, res);
+  getAccountInfo(@Body() data: PrivateRequestsKeysWithExchange) {
+    return this.exchangeCordinatorService.returnAccountInfoFromSpecificExchange(data);
   }
 
   @Get('getAssets/:exchangeName')
