@@ -110,6 +110,34 @@ export class ExchangeCoordinatorService {
         throw new HttpException('The exchange ' + data.exchange + ' was not found!', 404);
     }
   }
+
+  public returnTimeDependingOnExchange(exchangeName: string) {
+    switch (exchangeName.toLowerCase()) {
+      case 'binance':
+        return this.binance.getTime();
+      default:
+        throw new HttpException('The exchange ' + exchangeName + ' was not found!', 404);
+    }
+  }
+
+  public returnFuturesAccountInfoFromSpecificExchange(data: PrivateRequestsKeysWithExchange) {
+    switch (data.exchange.toLowerCase()) {
+      case 'binance':
+        return this.binance.getFutureAccountInfo({ public: data.public, private: data.private });
+      default:
+        throw new HttpException('The exchange ' + data.exchange + ' was not found!', 404);
+    }
+  }
+
+  async returnPriceOfAssetDependingOnExchange(exchange: string, fullAssetPair: string) {
+    switch (exchange) {
+      case 'binance':
+        return this.binance.returnFuturePrice(fullAssetPair);
+      default:
+        throw new HttpException('The exchange ' + exchange + ' was not found!', 404);
+    }
+  }
+
   //Public
   async returnExchangeInfoFromSpecificExchange(exchange: string) {
     switch (exchange.toLowerCase()) {
@@ -120,10 +148,28 @@ export class ExchangeCoordinatorService {
     }
   }
 
+  async returnFuturesExchangeInfoFromSpecificExchange(exchange: string) {
+    switch (exchange.toLowerCase()) {
+      case 'binance':
+        return this.binance.getFuturesExchangeInfo();
+      default:
+        throw new HttpException('The exchange ' + exchange + ' was not found!', 404);
+    }
+  }
+
   async returnAssetsFromSpecificExchange(exchangeName: string) {
     switch (exchangeName.toLowerCase()) {
       case 'binance':
         return this.binance.returnAllAssets();
+      default:
+        throw new HttpException('The exchange ' + exchangeName + ' was not found!', 404);
+    }
+  }
+
+  async returnFutureAssetsFromSpecificExchange(exchangeName: string) {
+    switch (exchangeName.toLowerCase()) {
+      case 'binance':
+        return this.binance.returnAllFutureAssets();
       default:
         throw new HttpException('The exchange ' + exchangeName + ' was not found!', 404);
     }

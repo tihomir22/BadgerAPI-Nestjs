@@ -1,11 +1,11 @@
 import { Injectable, HttpException } from '@nestjs/common';
-import { FullConditionsModel, ConditionPack } from './schemas/Conditions.schema';
+import { FullConditionsModel, ConditionPack, DeleteConditionsById } from './schemas/Conditions.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ExchangeCoordinatorService } from '../exchange-coordinator/exchange-coordinator';
 import { TechnicalIndicatorsService } from '../technical-indicators/technical-indicators.service';
 import { ServerResponseIndicator, BacktestedConditionModel } from '../models/PaqueteIndicadorTecnico';
-import { clone } from 'lodash';
+import { clone, cloneDeep } from 'lodash';
 import { HistoricRegistry } from 'src/models/HistoricRegistry';
 
 @Injectable()
@@ -47,6 +47,26 @@ export class ConditionService {
     } else {
       throw new HttpException(`Non valid condition state ${state}`, 400);
     }
+  }
+
+  async deleteConditionsById(conditionsPack: DeleteConditionsById) {
+    let resBusqueda = await this.conditionModel.find({ user: conditionsPack.user });
+    resBusqueda.forEach(condicionPack => {
+      let condicionesFiltradas = [];
+
+      condicionPack.conditionConfig.forEach(condicion => {
+        let idAnalizadoActualSubcondicion = conditionsPack.conditionsToDelete.indexOf(condicion.id);
+        if (idAnalizadoActualSubcondicion == -1) {
+          condicionesFiltradas.push(condicion);
+        }
+      });
+      if (condicionPack.conditionConfig.length != condicionesFiltradas.length) {
+        condicionPack.conditionConfig = cloneDeep(condicionesFiltradas);
+        condicionPack.save();
+      }
+
+      condicionesFiltradas = [];
+    });
   }
 
   async changeFundingAsset(encondedConditionId: any, fundingAsset: string) {

@@ -28,16 +28,17 @@
     "@nestjs/mongoose": "latest",
     "@nestjs/platform-express": "latest",
     "@nestjs/schedule": "latest",
-    "binance-api-node": "^0.9.9",
+    "@types/crypto-js": "^3.1.44",
+    "atob": "^2.1.2",
+    "binance-api-node": "^0.9.18",
+    "btoa": "^1.2.1",
+    "crypto-js": "^4.0.0",
     "lodash": "^4.17.15",
     "mongoose": "^5.7.12",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.0",
     "rxjs": "^6.5.3",
-    "tulind": "^0.8.18",
-    "crypto-js": "^4.0.0",
-    "atob": "^2.1.2",
-    "btoa": "^1.2.1"
+    "tulind": "^0.8.18"
   },
   "devDependencies": {
     "@nestjs/cli": "latest",

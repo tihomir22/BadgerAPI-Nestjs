@@ -27,6 +27,11 @@ export class ExchangeCoordinatorController {
     return this.exchangeCordinatorService.returnAssetsFromSpecificExchange(exchName);
   }
 
+  @Get('getFutureAssets/:exchangeName')
+  returnFutureAssetsFromExchange(@Param('exchangeName') exchName) {
+    return this.exchangeCordinatorService.returnFutureAssetsFromSpecificExchange(exchName);
+  }
+
   @Get('fetchFullCMDDATA')
   returnCMCData() {
     return this.exchangeCordinatorService.fetchCMCFullData();

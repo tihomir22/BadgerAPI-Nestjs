@@ -25,4 +25,29 @@ export class BinanceController {
   getAccountInfo(@Body() body, @Res() res) {
     return this.binanceService.getAccountInfo(body);
   }
+
+  @Post('getFuturesAccountInfo')
+  getFuturesAccountInfo(@Body() body) {
+    return this.binanceService.getFutureAccountInfo(body);
+  }
+
+  @Post('getOpenedOrders')
+  getOpenedOrders(@Body() body) {
+    return this.binanceService.obtainOpenedOrders(body);
+  }
+
+  @Post('cancelOpenedOrders')
+  cancelOpenedOrders(@Body() body) {
+    return this.binanceService.cancelAllOpenedOrders(body);
+  }
+
+  @Post('getAllOrders')
+  getAllOrders(@Body() body) {
+    return this.binanceService.getAllOrders(body);
+  }
+
+  @Post('cancelOrderById')
+  cancelOrderById(@Body() body) {
+    return this.binanceService.cancelOrder(body);
+  }
 }

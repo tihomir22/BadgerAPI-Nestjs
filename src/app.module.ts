@@ -1,8 +1,6 @@
-import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { Module, MiddlewareConsumer, RequestMethod, HttpModule, HttpService } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { BinanceController } from './binance/binance.controller';
-import { BinanceService } from './binance/binance.service';
 import { TechnicalIndicatorsController } from './technical-indicators/technical-indicators.controller';
 import { TechnicalIndicatorsService } from './technical-indicators/technical-indicators.service';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -24,8 +22,8 @@ import { CryptoService } from './crypto/crypto/crypto.service';
     ScheduleModule.forRoot(),
     KeysModule,
   ],
-  controllers: [AppController, BinanceController, TechnicalIndicatorsController, ConditionController, KeysController],
-  providers: [AppService, BinanceService, TechnicalIndicatorsService, CryptoService],
+  controllers: [AppController, TechnicalIndicatorsController, ConditionController, KeysController],
+  providers: [AppService, TechnicalIndicatorsService, CryptoService],
 })
 export class AppModule {
   constructor() {}

@@ -1,5 +1,5 @@
-import { Controller, Post, Body, Get, Param, Res, HttpException } from '@nestjs/common';
-import { ConditionPack, ChangeStateModel, ChangeFundingAsset } from './schemas/Conditions.schema';
+import { Controller, Post, Body, Get, Param, Res, HttpException, Delete } from '@nestjs/common';
+import { ConditionPack, ChangeStateModel, ChangeFundingAsset, DeleteConditionsById } from './schemas/Conditions.schema';
 import { ConditionService } from './condition.service';
 import { KeysService } from 'src/keys/keys.service';
 import { BadgerUtils } from 'src/static/Utils';
@@ -37,9 +37,9 @@ export class ConditionController {
     return this.conditionService.changeState(body.id, body.state);
   }
 
-  @Post('changeFundingAsset')
-  changeFundingAsset(@Body() body: ChangeFundingAsset) {
-    return this.conditionService.changeFundingAsset(body.id, body.fundingAsset);
+  @Post('deleteConditionsById')
+  deleteConditionsById(@Body() deleteContionsModel: DeleteConditionsById) {
+    return this.conditionService.deleteConditionsById(deleteContionsModel);
   }
 
   @Post('testOperation')
@@ -52,4 +52,9 @@ export class ConditionController {
       });
     });
   }
+
+  /*@Post('changeFundingAsset')
+  changeFundingAsset(@Body() body: ChangeFundingAsset) {
+    return this.conditionService.changeFundingAsset(body.id, body.fundingAsset);
+  }*/
 }
