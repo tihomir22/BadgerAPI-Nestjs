@@ -22,7 +22,7 @@ export class BinanceController {
   }
 
   @Post('getAccountInfo')
-  getAccountInfo(@Body() body, @Res() res) {
+  getAccountInfo(@Body() body) {
     return this.binanceService.getAccountInfo(body);
   }
 
@@ -31,23 +31,33 @@ export class BinanceController {
     return this.binanceService.getFutureAccountInfo(body);
   }
 
-  @Post('getOpenedOrders')
-  getOpenedOrders(@Body() body) {
-    return this.binanceService.obtainOpenedOrders(body);
-  }
-
   @Post('cancelOpenedOrders')
   cancelOpenedOrders(@Body() body) {
     return this.binanceService.cancelAllOpenedOrders(body);
   }
 
-  @Post('getAllOrders')
-  getAllOrders(@Body() body) {
-    return this.binanceService.getAllOrders(body);
+  @Post('queryOrder')
+  queryOrder(@Body() body) {
+    return this.binanceService.queryOrder(body);
   }
 
-  @Post('cancelOrderById')
-  cancelOrderById(@Body() body) {
-    return this.binanceService.cancelOrder(body);
+  @Post('obtainCurrentAllOpenOrders')
+  obtainCurrentAllOpenOrders(@Body() body) {
+    return this.binanceService.obtainCurrentAllOpenOrders(body);
+  }
+
+  @Post('getOpenedOrders')
+  getOpenedOrders(@Body() body) {
+    return this.binanceService.obtainOpenedOrders(body);
+  }
+
+  @Post('newOrder')
+  newOrder(@Body() body) {
+    return this.binanceService.newOrder(body.keys, body.params);
+  }
+
+  @Post('changePositionMode')
+  changePositionMode(@Body() body) {
+    return this.binanceService.changePositionMode(body);
   }
 }

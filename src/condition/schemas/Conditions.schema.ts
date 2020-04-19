@@ -7,6 +7,12 @@ export const ConditionInfoSchema = new mongoose.Schema({
   indicatorConfig: {},
 });
 
+export const executedTradePositionInfo = new mongoose.Schema({
+  trade: {},
+  exchange: String,
+  status: String,
+});
+
 export interface ConditionPack extends mongoose.Document {
   user: string;
   conditionConfig: Array<FullConditionsModel>;

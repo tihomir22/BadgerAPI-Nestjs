@@ -229,21 +229,21 @@ export class ConditionService {
     return [condicion, technicalData];
   }
 
-  public detectIfConditionIsAccomplishedWithSingleEntry(condicion: FullConditionsModel, technicalEntry: number) {
+  public detectIfConditionIsAccomplishedWithSingleEntry(activateWhen: 'below' | 'above' | 'equals', value: any, technicalEntry: number) {
     let res = false;
-    switch (condicion.enter.activateWhen) {
+    switch (activateWhen) {
       case 'above':
-        if (technicalEntry >= condicion.enter.value) {
+        if (technicalEntry >= value) {
           res = true;
         }
         break;
       case 'below':
-        if (technicalEntry <= condicion.enter.value) {
+        if (technicalEntry <= value) {
           res = true;
         }
         break;
       case 'equals':
-        if (technicalEntry === condicion.enter.value) {
+        if (technicalEntry === value) {
           res = true;
         }
         break;
@@ -258,7 +258,11 @@ export class ConditionService {
     for (let i = 0; i < technicalData.extraData.technical.length; i++) {
       const registroTecnico = technicalData.extraData.technical[i];
       if (registroTecnico != null) {
-        detectadoCumplimiento = this.detectIfConditionIsAccomplishedWithSingleEntry(condicion, registroTecnico);
+        detectadoCumplimiento = this.detectIfConditionIsAccomplishedWithSingleEntry(
+          condicion.enter.activateWhen,
+          condicion.enter.value,
+          registroTecnico,
+        );
         let resdetectIfConditionAccomplishmentEnded: Array<any> = this.detectIfConditionAccomplishmentEnded(
           detectadoCumplimiento,
           seEstaCumpliendoLaCondicion,

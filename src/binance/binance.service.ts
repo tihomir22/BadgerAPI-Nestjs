@@ -4,13 +4,14 @@ import {
   PrivateRequestsKeys,
   PrivateRequestsKeysWithSymbol,
   PrivateRequestsKeysWithSymbolAndOrderId,
+  NewOrderModel,
+  PrivateRequestsKeysWithDualSidePosition,
+  BaseBinanceModel,
 } from '../models/PrivateRequestsModel';
 import { CryptoService } from '../crypto/crypto/crypto.service';
-import { of, Observable } from 'rxjs';
 import { HttpServiceCustom } from '../http/http.service';
-import { map, mergeMap, catchError } from 'rxjs/operators';
-import { clone } from 'lodash';
-import { FuturesAccountInfo } from 'src/models/FuturesAccountInfo';
+import { map, mergeMap, catchError, timestamp } from 'rxjs/operators';
+import { of } from 'rxjs';
 @Injectable()
 export class BinanceService {
   constructor(private crypto: CryptoService, private servicio: HttpServiceCustom) {}
@@ -20,152 +21,127 @@ export class BinanceService {
     return publicClient.ping();
   }
 
-  async getAccountInfo(keys: PrivateRequestsKeys) {
-    let apiKey = this.crypto.decryptTXT(keys.public);
-    let privateKey = this.crypto.decryptTXT(keys.private);
+  public getAccountInfo(model: BaseBinanceModel) {
+    let apiKey = this.crypto.decryptTXT(model.keys.public);
+    let privateKey = this.crypto.decryptTXT(model.keys.private);
     let publicClient = Binance({ apiKey: apiKey, apiSecret: privateKey });
-    return await publicClient.accountInfo();
+    return publicClient.accountInfo();
   }
 
-  public getTime() {
+  public async getTime() {
+    return await this.servicio.http
+      .get('https://api.binance.com/api/v1/time')
+      .pipe(map(entry => entry.data.serverTime))
+      .toPromise();
+  }
+
+  public getTimeAsObservable() {
     return this.servicio.http.get('https://api.binance.com/api/v1/time').pipe(map(entry => entry.data.serverTime));
   }
 
-  public getFutureAccountInfo(keys: PrivateRequestsKeys): Observable<FuturesAccountInfo> {
-    return this.executeBinancePrivateRequestGET(keys, '/fapi/v1/balance').pipe(
-      map(entry => {
-        return {
-          listaAssets: entry,
-        };
-      }),
-    );
+  public getFutureAccountInfo(model: BaseBinanceModel) {
+    return this.executeBinancePrivateRequestGET(model.keys, model.params, '/fapi/v1/balance');
   }
 
-  public obtainOpenedOrders(keys: PrivateRequestsKeys): Observable<any> {
-    return this.executeBinancePrivateRequestGET(keys, '/fapi/v1/positionRisk');
+  public async obtainOpenedOrders(model: BaseBinanceModel) {
+    return this.executeBinancePrivateRequestGET(model.keys, model.params, '/fapi/v1/positionRisk');
   }
 
-  public cancelAllOpenedOrders(keys: PrivateRequestsKeysWithSymbol): Observable<any> {
-    return this.cancelAllOpenOrdersBySymbol(keys, '/fapi/v1/allOpenOrders');
+  public obtainCurrentAllOpenOrders(model: BaseBinanceModel) {
+    return this.executeBinancePrivateRequestGET(model.keys, model.params, '/fapi/v1/openOrders');
   }
 
-  public cancelOrder(keys: PrivateRequestsKeysWithSymbolAndOrderId) {
+  public cancelAllOpenedOrders(model: BaseBinanceModel) {
+    return this.executeBinancePrivateRequestDELETE(model.keys, model.params, '/fapi/v1/allOpenOrders');
+  }
+
+  public changePositionMode(model: BaseBinanceModel) {
+    return this.executeBinancePrivateRequestPOST(model.keys, model.params, '/fapi/v1/positionSide/dual');
+  }
+
+  async newOrder(keys: PrivateRequestsKeys, orderInfo: NewOrderModel) {
+    let futuresInfo = await this.getFuturesExchangeInfo();
+    let busqudaSimbolo = futuresInfo.symbols.find(symbol => symbol.symbol == orderInfo.symbol);
+    if (busqudaSimbolo) {
+      orderInfo.quantity = parseFloat(orderInfo.quantity.toFixed(busqudaSimbolo['quantityPrecision']));
+      return this.executeBinancePrivateRequestPOST(keys, orderInfo, '/fapi/v1/order');
+    } else {
+      throw new HttpException(`The simbol ${orderInfo.symbol} is wrong`, 400);
+    }
+  }
+
+  public queryOrder(model: BaseBinanceModel) {
+    return this.executeBinancePrivateRequestGET(model.keys, model.params, '/fapi/v1/order');
+  }
+
+  async executeBinancePrivateRequestPOST(keys: PrivateRequestsKeys, extraParams: any, endPointUrl: string): Promise<any> {
     let apiKey = this.crypto.decryptTXT(keys.public);
     let privateKey = this.crypto.decryptTXT(keys.private);
     let brul = 'https://fapi.binance.com';
+    if (!extraParams) extraParams = {};
+    let tiempo = await this.getTime();
+    extraParams['timestamp'] = tiempo;
+    extraParams['signature'] = this.crypto.generateBinanceSignature(this.generateQueryStringSignature(extraParams, tiempo), privateKey);
 
-    let keysForQuery = {
-      akey: apiKey,
-      skey: privateKey,
-    };
-
-    this.getTime()
-      .pipe(
-        mergeMap(respuesta => {
-          return this.servicio.http
-            .delete(brul + '/fapi/v1/order', {
-              params: {
-                symbol: keys.symbol.trim(),
-                orderId: keys.orderId,
-                timestamp: respuesta,
-                signature: this.crypto.generateBinanceSignature(
-                  `symbol=${keys.symbol}&orderId=${keys.orderId}&timestamp=${respuesta}`,
-                  keysForQuery.skey,
-                ),
-              },
-              headers: { 'X-MBX-APIKEY': keysForQuery.akey.trim() },
-            })
-            .pipe(
-              map((entry: any) => entry.data),
-              catchError(error => of(error.response.data)),
-            );
-        }),
-      )
-      .subscribe(
-        data => {
-          console.log(data,keys.orderId);
-        },
-        error => {
-          console.log(error,keys.orderId);
-        },
-      );
+    return this.servicio.http
+      .post(brul + endPointUrl, null, {
+        params: extraParams,
+        headers: { 'X-MBX-APIKEY': apiKey.trim() },
+      })
+      .pipe(map(entry => entry.data));
   }
 
-  public getAllOrders(keys: PrivateRequestsKeysWithSymbol): Observable<any> {
+  public async executeBinancePrivateRequestDELETE(keys: PrivateRequestsKeys, extraParams: any, endPointUrl: string) {
     let apiKey = this.crypto.decryptTXT(keys.public);
     let privateKey = this.crypto.decryptTXT(keys.private);
     let brul = 'https://fapi.binance.com';
-
-    let keysForQuery = {
-      akey: apiKey,
-      skey: privateKey,
-    };
-
-    return this.getTime().pipe(
-      mergeMap(respuesta => {
-        return this.servicio.http
-          .get(brul + '/fapi/v1/allOrders', {
-            params: {
-              symbol: keys.symbol.trim(),
-              timestamp: respuesta,
-              signature: this.crypto.generateBinanceSignature(`symbol=${keys.symbol}&timestamp=` + respuesta, keysForQuery.skey),
-            },
-            headers: { 'X-MBX-APIKEY': keysForQuery.akey.trim() },
-          })
-          .pipe(map((entry: any) => entry.data));
-      }),
-    );
+    if (!extraParams) extraParams = {};
+    let time = await this.getTime();
+    extraParams['timestamp'] = time;
+    extraParams['signature'] = this.crypto.generateBinanceSignature(this.generateQueryStringSignature(extraParams, time), privateKey);
+    return this.servicio.http
+      .delete(brul + endPointUrl, {
+        params: extraParams,
+        headers: { 'X-MBX-APIKEY': apiKey.trim() },
+      })
+      .pipe(map(entry => entry.data))
+      .toPromise();
   }
 
-  public cancelAllOpenOrdersBySymbol(keys: PrivateRequestsKeysWithSymbol, endPointUrl: string) {
+  public async executeBinancePrivateRequestGET(keys: PrivateRequestsKeys, extraParams: any, endPointUrl: string) {
     let apiKey = this.crypto.decryptTXT(keys.public);
     let privateKey = this.crypto.decryptTXT(keys.private);
     let brul = 'https://fapi.binance.com';
+    if (!extraParams) extraParams = {};
+    let time = await this.getTime();
+    extraParams['timestamp'] = time;
+    extraParams['signature'] = this.crypto.generateBinanceSignature(this.generateQueryStringSignature(extraParams, time), privateKey);
 
-    let keysForQuery = {
-      akey: apiKey,
-      skey: privateKey,
-    };
-
-    return this.getTime().pipe(
-      mergeMap(respuesta => {
-        return this.servicio.http
-          .delete(brul + endPointUrl, {
-            params: {
-              symbol: keys.symbol.trim(),
-              timestamp: respuesta,
-              signature: this.crypto.generateBinanceSignature(`symbol=${keys.symbol}&timestamp=` + respuesta, keysForQuery.skey),
-            },
-            headers: { 'X-MBX-APIKEY': keysForQuery.akey.trim() },
-          })
-          .pipe(map((entry: any) => entry.data));
-      }),
-    );
+    return this.servicio.http
+      .get(brul + endPointUrl, {
+        params: extraParams,
+        headers: { 'X-MBX-APIKEY': apiKey.trim() },
+      })
+      .pipe(map(entry => entry.data))
+      .toPromise();
   }
 
-  public executeBinancePrivateRequestGET(keys: PrivateRequestsKeys, endPointUrl: string) {
-    let apiKey = this.crypto.decryptTXT(keys.public);
-    let privateKey = this.crypto.decryptTXT(keys.private);
-    let brul = 'https://fapi.binance.com';
-
-    let keysForQuery = {
-      akey: apiKey,
-      skey: privateKey,
-    };
-
-    return this.getTime().pipe(
-      mergeMap(respuesta => {
-        return this.servicio.http
-          .get(brul + endPointUrl, {
-            params: {
-              timestamp: respuesta,
-              signature: this.crypto.generateBinanceSignature('timestamp=' + respuesta, keysForQuery.skey),
-            },
-            headers: { 'X-MBX-APIKEY': keysForQuery.akey.trim() },
-          })
-          .pipe(map((entry: any) => entry.data));
-      }),
-    );
+  private generateQueryStringSignature(params: any, time: number) {
+    let res = '';
+    Object.keys(params).forEach(key => {
+      if (res != '' && key != 'timestamp') {
+        res = res + '&';
+      }
+      if (key != 'timestamp') {
+        res = res + key + '=' + params[key];
+      }
+    });
+    if (res != '') {
+      res = res + '&timestamp=' + time;
+    } else {
+      res = 'timestamp=' + time;
+    }
+    return res;
   }
 
   async getExchangeInfo() {

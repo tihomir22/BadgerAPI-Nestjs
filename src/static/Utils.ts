@@ -14,4 +14,13 @@ export class BadgerUtils {
     }
     return null;
   }
+  public static returnOppositeTrade(param: { side: 'BUY' | 'SELL'; positionSide: 'SHORT' | 'LONG' }) {
+    if (param.side == 'BUY' && param.positionSide == 'LONG') {
+      return { side: 'SELL', positionSide: 'LONG' };
+    }
+    if (param.side == 'SELL' && param.positionSide == 'SHORT') {
+      return { side: 'BUY', positionSide: 'SHORT' };
+    }
+    return null;
+  }
 }

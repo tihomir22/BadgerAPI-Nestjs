@@ -9,7 +9,7 @@ import { ExchangeInfo } from './schemas/ExchangeInfo.schema';
 
 import * as request from 'request';
 import { ExchangeConstants } from './constants/ExchangeConstants';
-import { PrivateRequestsKeysWithExchange } from 'src/models/PrivateRequestsModel';
+import { PrivateRequestsKeysWithExchange, BaseBinanceModel } from 'src/models/PrivateRequestsModel';
 import { Account } from 'binance-api-node';
 
 @Injectable()
@@ -105,9 +105,18 @@ export class ExchangeCoordinatorService {
   async returnAccountInfoFromSpecificExchange(data: PrivateRequestsKeysWithExchange): Promise<Account> {
     switch (data.exchange.toLowerCase()) {
       case 'binance':
-        return this.binance.getAccountInfo({ public: data.public, private: data.private });
+        return this.binance.getAccountInfo({ keys: { public: data.public, private: data.private } });
       default:
         throw new HttpException('The exchange ' + data.exchange + ' was not found!', 404);
+    }
+  }
+
+  public executeOrderDependingOnExchange(data: BaseBinanceModel, exchange: string) {
+    switch (exchange.toLowerCase()) {
+      case 'binance':
+        return this.binance.newOrder(data.keys, data.params);
+      default:
+        throw new HttpException('The exchange ' + exchange + ' was not found!', 404);
     }
   }
 
@@ -123,7 +132,7 @@ export class ExchangeCoordinatorService {
   public returnFuturesAccountInfoFromSpecificExchange(data: PrivateRequestsKeysWithExchange) {
     switch (data.exchange.toLowerCase()) {
       case 'binance':
-        return this.binance.getFutureAccountInfo({ public: data.public, private: data.private });
+        return this.binance.getFutureAccountInfo({ keys: { public: data.public, private: data.private } });
       default:
         throw new HttpException('The exchange ' + data.exchange + ' was not found!', 404);
     }
