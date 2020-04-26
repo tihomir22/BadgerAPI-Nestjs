@@ -11,26 +11,36 @@ export interface WrapperSchemaFuturesOrderInfo extends mongoose.Document {
   trade: FuturesOrderInfo;
   status: 'abierto' | 'cerrado';
   exchange: string;
+  metadata: MetadataOrder;
 }
 
 export interface FuturesOrderInfo {
-  orderId: number;
-  symbol: string;
-  status: string;
-  clientOrderId: string;
-  price: string;
-  avgPrice: string;
-  origQty: string;
-  executedQty: string;
-  cumQty: string;
-  cumQuote: string;
-  timeInForce: string;
-  type: string;
-  reduceOnly: boolean;
-  side: string;
-  positionSide: string;
-  stopPrice: string;
-  workingType: string;
-  origType: string;
-  updateTime: number;
+  orderId?: number;
+  symbol?: string;
+  status?: string;
+  clientOrderId?: string;
+  price?: string;
+  avgPrice?: string;
+  origQty?: string;
+  executedQty?: string;
+  cumQty?: string;
+  cumQuote?: string;
+  timeInForce?: string;
+  type?: string;
+  reduceOnly?: boolean;
+  side?: string;
+  positionSide?: string;
+  stopPrice?: string;
+  workingType?: string;
+  origType?: string;
+  updateTime?: number;
+}
+
+export interface MetadataOrder {
+  openPrice: number;
+  closePrice: number;
+  openTime: number;
+  closeTime: number;
+  profitability: number;
+  profitabilityChange: number;
 }

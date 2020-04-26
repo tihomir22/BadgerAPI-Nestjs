@@ -11,6 +11,7 @@ export const executedTradePositionInfo = new mongoose.Schema({
   trade: {},
   exchange: String,
   status: String,
+  metadata: {},
 });
 
 export interface ConditionPack extends mongoose.Document {
