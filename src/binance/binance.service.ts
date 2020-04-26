@@ -12,6 +12,7 @@ import { CryptoService } from '../crypto/crypto/crypto.service';
 import { HttpServiceCustom } from '../http/http.service';
 import { map, mergeMap, catchError, timestamp } from 'rxjs/operators';
 import { of } from 'rxjs';
+import { BadgerUtils } from '../static/Utils';
 @Injectable()
 export class BinanceService {
   constructor(private crypto: CryptoService, private servicio: HttpServiceCustom) {}
@@ -77,7 +78,7 @@ export class BinanceService {
   async executeBinancePrivateRequestPOST(keys: PrivateRequestsKeys, extraParams: any, endPointUrl: string): Promise<any> {
     let apiKey = this.crypto.decryptTXT(keys.public);
     let privateKey = this.crypto.decryptTXT(keys.private);
-    let brul = 'https://fapi.binance.com';
+    let brul = BadgerUtils.BINANCE_FUTURES_ENDPOINT;
     if (!extraParams) extraParams = {};
     let tiempo = await this.getTime();
     extraParams['timestamp'] = tiempo;
@@ -94,7 +95,7 @@ export class BinanceService {
   public async executeBinancePrivateRequestDELETE(keys: PrivateRequestsKeys, extraParams: any, endPointUrl: string) {
     let apiKey = this.crypto.decryptTXT(keys.public);
     let privateKey = this.crypto.decryptTXT(keys.private);
-    let brul = 'https://fapi.binance.com';
+    let brul = BadgerUtils.BINANCE_FUTURES_ENDPOINT;
     if (!extraParams) extraParams = {};
     let time = await this.getTime();
     extraParams['timestamp'] = time;
@@ -111,7 +112,7 @@ export class BinanceService {
   public async executeBinancePrivateRequestGET(keys: PrivateRequestsKeys, extraParams: any, endPointUrl: string) {
     let apiKey = this.crypto.decryptTXT(keys.public);
     let privateKey = this.crypto.decryptTXT(keys.private);
-    let brul = 'https://fapi.binance.com';
+    let brul = BadgerUtils.BINANCE_FUTURES_ENDPOINT;
     if (!extraParams) extraParams = {};
     let time = await this.getTime();
     extraParams['timestamp'] = time;

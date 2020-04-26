@@ -10,6 +10,7 @@ import { ExchangeInfo, Account } from 'binance-api-node';
 import { UserKey } from 'src/keys/schemas/UserKeys.schema';
 import { FuturesAccountInfo, FuturesOrderInfo, WrapperSchemaFuturesOrderInfo } from 'src/models/FuturesAccountInfo';
 import { InjectModel } from '@nestjs/mongoose';
+import { cloneDeep, clone } from 'lodash';
 import { Model } from 'mongoose';
 export interface UltimoPenultimoCumplimientoRegistro {
   ultimo: boolean;
@@ -84,7 +85,7 @@ export class ConditionExcutionerService {
             );
 
             if (cumplimientoUltimosRegistros.ultimo && !cumplimientoUltimosRegistros.penultimo) {
-              this.ejecutarCondicion(configCondition, condicionMongoDb, observer);
+              this.prepareToExecuteOrder(configCondition, condicionMongoDb, observer);
             } else {
               let cumplimientoSalida = this.comprobacionCumplimientoSalidaSoloUltimoRegistro(configCondition, historicDataAndTechnical);
               if (cumplimientoSalida) {
@@ -107,7 +108,7 @@ export class ConditionExcutionerService {
     }
   }
 
-  public ejecutarCondicion(subCondicion: FullConditionsModel, wrapperCondiciones: ConditionPack, emisorRespuesta: Observer<any>) {
+  public prepareToExecuteOrder(subCondicion: FullConditionsModel, wrapperCondiciones: ConditionPack, emisorRespuesta: Observer<any>) {
     this.keysService.returnKeysByUserID(wrapperCondiciones.user).then(keysDelUser => {
       let keyUsuarioObtenida = BadgerUtils.busquedaKeysValida(keysDelUser, wrapperCondiciones.indicatorConfig.exchange);
       if (keyUsuarioObtenida) {
@@ -116,9 +117,6 @@ export class ConditionExcutionerService {
           let cuenta: Array<FuturesAccountInfo> = data[0];
           let exchangeInfo: ExchangeInfo = data[1];
           let ultimoPrecioAsset: number = data[2];
-
-          console.log(cuenta);
-
           //Cuando apliquemos cantidades fijas, debemos tenerlas en cuenta en vez de obtener todas las posesiones del usuario
           let cantidadEnTetherDelUsuario = parseFloat(cuenta.find(entry => entry.asset === 'USDT').withdrawAvailable);
           let futureAssetInfo = exchangeInfo.symbols.find(
@@ -126,39 +124,14 @@ export class ConditionExcutionerService {
           );
 
           if (futureAssetInfo) {
-            let busquedaCantidadMinimaDeEntrada = futureAssetInfo.filters.find((filtro: any) => filtro.filterType == 'MARKET_LOT_SIZE');
-            if (busquedaCantidadMinimaDeEntrada) {
-              let stepSize = parseFloat(busquedaCantidadMinimaDeEntrada['stepSize']);
-              let cantidadMinima = parseFloat(busquedaCantidadMinimaDeEntrada['minQty']);
-              let cantidadMinimaDeTether = ultimoPrecioAsset * cantidadMinima;
-              let cantidadAInvertirEnSiguienteOperacionTether = parseInt(cantidadEnTetherDelUsuario / 2 / stepSize + '') * stepSize;
-              let cantidadAInvertirEnSiguienteOperacionBTC = cantidadEnTetherDelUsuario / ultimoPrecioAsset / 2;
-              if (
-                cantidadAInvertirEnSiguienteOperacionTether >= cantidadMinimaDeTether &&
-                cantidadAInvertirEnSiguienteOperacionBTC >= cantidadMinima
-              ) {
-                console.log('el usuario tiene suficiente pasta');
-                this.executeOrder(
-                  keyUsuarioObtenida,
-                  wrapperCondiciones.user + ':' + Math.floor(Math.random() * 100) + 1 + ':' + subCondicion.id,
-                  wrapperCondiciones.indicatorConfig.historicParams.symbol,
-                  subCondicion.enter.doWhat.toUpperCase().trim() as any,
-                  subCondicion.enter.doWhat.toUpperCase().trim() == 'BUY' ? 'LONG' : 'SHORT',
-                  'MARKET',
-                  cantidadAInvertirEnSiguienteOperacionBTC,
-                  wrapperCondiciones.indicatorConfig.exchange,
-                ).then(data => {
-                  data.subscribe((data: FuturesOrderInfo) => {
-                    if (data.clientOrderId) {
-                      this.inserTradeLog(data, wrapperCondiciones.indicatorConfig.exchange);
-                    }
-                  });
-                });
-              } else {
-                console.log('El usuario debe ingresar más pasta :D');
-              }
-            }
-            emisorRespuesta.next([cuenta]);
+            this.tryToExecuteOrder(
+              futureAssetInfo,
+              ultimoPrecioAsset,
+              cantidadEnTetherDelUsuario,
+              keyUsuarioObtenida,
+              wrapperCondiciones,
+              subCondicion,
+            );
           } else {
             emisorRespuesta.next([futureAssetInfo]);
           }
@@ -168,6 +141,50 @@ export class ConditionExcutionerService {
       }
     });
   }
+
+  private tryToExecuteOrder(
+    futureAssetInfo: any,
+    ultimoPrecioAsset: number,
+    cantidadEnTetherDelUsuario: number,
+    keyUsuarioObtenida: UserKey,
+    wrapperCondiciones: ConditionPack,
+    subCondicion: FullConditionsModel,
+  ): void {
+    let busquedaCantidadMinimaDeEntrada = futureAssetInfo.filters.find((filtro: any) => filtro.filterType == 'MARKET_LOT_SIZE');
+    if (busquedaCantidadMinimaDeEntrada) {
+      let stepSize = parseFloat(busquedaCantidadMinimaDeEntrada['stepSize']);
+      let cantidadMinima = parseFloat(busquedaCantidadMinimaDeEntrada['minQty']);
+      let cantidadMinimaDeTether = ultimoPrecioAsset * cantidadMinima;
+      let cantidadAInvertirEnSiguienteOperacionTether = parseInt(cantidadEnTetherDelUsuario / 2 / stepSize + '') * stepSize;
+      let cantidadAInvertirEnSiguienteOperacionBTC = cantidadEnTetherDelUsuario / ultimoPrecioAsset / 2;
+      if (
+        cantidadAInvertirEnSiguienteOperacionTether >= cantidadMinimaDeTether &&
+        cantidadAInvertirEnSiguienteOperacionBTC >= cantidadMinima
+      ) {
+        console.log('el usuario tiene suficiente pasta');
+        this.executeOrder(
+          keyUsuarioObtenida,
+          wrapperCondiciones.user + ':' + Math.floor(Math.random() * 100) + 1 + ':' + subCondicion.id,
+          wrapperCondiciones.indicatorConfig.historicParams.symbol,
+          subCondicion.enter.doWhat.toUpperCase().trim() as any,
+          subCondicion.enter.doWhat.toUpperCase().trim() == 'BUY' ? 'LONG' : 'SHORT',
+          'MARKET',
+          cantidadAInvertirEnSiguienteOperacionBTC,
+          wrapperCondiciones.indicatorConfig.exchange,
+        ).then(data => {
+          data.subscribe((data: FuturesOrderInfo) => {
+            if (data.clientOrderId) {
+              this.inserTradeLog(data, wrapperCondiciones.indicatorConfig.exchange, ultimoPrecioAsset, Date.now());
+            }
+          });
+        });
+      } else {
+        console.log('El usuario debe ingresar más pasta :D');
+      }
+    }
+    //emisorRespuesta.next([cuenta]);
+  }
+
   public comprobacionCumplimientoUltimosRegistros(
     configCondition: FullConditionsModel,
     historicDataAndTechnical: BacktestedConditionModel,
@@ -206,26 +223,49 @@ export class ConditionExcutionerService {
     );
   }
 
-  private async inserTradeLog(data: FuturesOrderInfo, exchange: string) {
+  public async inserTradeLog(data: FuturesOrderInfo, exchange: string, openPrice: number, openTime: number) {
     const createdExchange = new this.conditionLogs({
       trade: data,
       status: 'abierto',
       exchange: exchange,
+      metadata: {
+        openPrice: openPrice,
+        closePrice: -1,
+        openTime: openTime,
+        closeTime: -1,
+        profitability: -1,
+        profitabilityChange: -1,
+      },
     });
     return await createdExchange.save();
   }
 
-  private async changeStatusOfLog(newStatus: 'abierto' | 'cerrado', id: any) {
-    return await this.conditionLogs.findByIdAndUpdate(
-      {
-        _id: id,
-      },
-      {
-        $set: {
-          status: newStatus,
-        },
-      },
-    );
+  public async changeStatusOfLog(newStatus: 'abierto' | 'cerrado', id: any, newData: any) {
+    let searchedLog = await this.conditionLogs.findById({ _id: id });
+    searchedLog.status = newStatus;
+    searchedLog.metadata = clone(Object.assign(searchedLog.metadata, newData));
+
+    if (
+      searchedLog.metadata.closePrice &&
+      searchedLog.metadata.openPrice &&
+      searchedLog.metadata.closePrice > 0 &&
+      searchedLog.metadata.openPrice > 0
+    ) {
+      if (searchedLog.trade.side == 'BUY') {
+        searchedLog.metadata.profitability = searchedLog.metadata.closePrice - searchedLog.metadata.openPrice;
+        searchedLog.metadata.profitabilityChange = BadgerUtils.getPercentageChange(
+          searchedLog.metadata.openPrice,
+          searchedLog.metadata.openPrice + searchedLog.metadata.profitability,
+        );
+      } else if (searchedLog.trade.side == 'SELL') {
+        searchedLog.metadata.profitability = searchedLog.metadata.openPrice - searchedLog.metadata.closePrice;
+        searchedLog.metadata.profitabilityChange = BadgerUtils.getPercentageChange(
+          searchedLog.metadata.openPrice,
+          searchedLog.metadata.openPrice + searchedLog.metadata.profitability,
+        );
+      }
+    }
+    return await searchedLog.updateOne(searchedLog.toJSON());
   }
 
   private async closeTrades(subCondicionId: number, userName: string, userKeys: UserKey) {
@@ -260,9 +300,13 @@ export class ConditionExcutionerService {
         parseFloat(tradeWRapper.trade.origQty),
         tradeWRapper.exchange,
       ).then(promiseData =>
-        promiseData.subscribe((data: FuturesOrderInfo) => {
+        promiseData.subscribe(async (data: FuturesOrderInfo) => {
           if (data.clientOrderId) {
-            this.changeStatusOfLog('cerrado', tradeWRapper.id);
+            let price = await this.exchangeCoordinator.returnPriceOfAssetDependingOnExchange(
+              tradeWRapper.exchange,
+              tradeWRapper.trade.symbol,
+            );
+            this.changeStatusOfLog('cerrado', tradeWRapper.id, { closePrice: price, closeTime: Date.now() });
           }
         }),
       );

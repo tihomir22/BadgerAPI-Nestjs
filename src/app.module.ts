@@ -13,6 +13,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { KeysController } from './keys/keys.controller';
 import { KeysModule } from './keys/keys.module';
 import { CryptoService } from './crypto/crypto/crypto.service';
+import { GeneralModule } from './general/general.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { CryptoService } from './crypto/crypto/crypto.service';
     ConditionModule,
     ScheduleModule.forRoot(),
     KeysModule,
+    GeneralModule,
   ],
   controllers: [AppController, TechnicalIndicatorsController, ConditionController, KeysController],
   providers: [AppService, TechnicalIndicatorsService, CryptoService],
