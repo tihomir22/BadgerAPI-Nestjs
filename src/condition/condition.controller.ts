@@ -1,11 +1,7 @@
 import { Controller, Post, Body, Get, Param, Res, HttpException, Delete } from '@nestjs/common';
 import { ConditionPack, ChangeStateModel, ChangeFundingAsset, DeleteConditionsById } from './schemas/Conditions.schema';
 import { ConditionService } from './condition.service';
-import { KeysService } from 'src/keys/keys.service';
-import { BadgerUtils } from 'src/static/Utils';
-import { ExchangeCoordinatorService } from 'src/exchange-coordinator/exchange-coordinator';
 import { forkJoin, Observable } from 'rxjs';
-import { Account, ExchangeInfo } from 'binance-api-node';
 import { ConditionExcutionerService } from './services/condition-excutioner/condition-excutioner.service';
 
 @Controller('condition')

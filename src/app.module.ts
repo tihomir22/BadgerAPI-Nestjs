@@ -14,6 +14,8 @@ import { KeysController } from './keys/keys.controller';
 import { KeysModule } from './keys/keys.module';
 import { CryptoService } from './crypto/crypto/crypto.service';
 import { GeneralModule } from './general/general.module';
+import * as webpush from 'web-push';
+import { GeneralService } from './general/general.service';
 
 @Module({
   imports: [
@@ -28,7 +30,14 @@ import { GeneralModule } from './general/general.module';
   providers: [AppService, TechnicalIndicatorsService, CryptoService],
 })
 export class AppModule {
-  constructor() {}
+  constructor(private general: GeneralService) {
+    this.webPushConfig();
+  }
+
+  webPushConfig() {
+    webpush.setVapidDetails('mailto:tihomir_alcudia3@hotmail.com', process.env.PUBLIC_VAPID_KEY, process.env.PRIVATE_VAPID_KEY);
+    this.general.setWebpushConfig(webpush);
+  }
 
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(RedireccionadorMiddleware).forRoutes({ path: 'technical-indicators', method: RequestMethod.POST });

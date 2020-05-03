@@ -7,6 +7,7 @@ import { ExchangeCoordinatorModule } from '../exchange-coordinator/exchange-coor
 import { TechnicalIndicatorsModule } from '../technical-indicators/technical-indicators.module';
 import { KeysModule } from 'src/keys/keys.module';
 import { ConditionExcutionerService } from './services/condition-excutioner/condition-excutioner.service';
+import { GeneralModule } from 'src/general/general.module';
 
 @Module({
   controllers: [ConditionController],
@@ -14,6 +15,7 @@ import { ConditionExcutionerService } from './services/condition-excutioner/cond
     ExchangeCoordinatorModule,
     TechnicalIndicatorsModule,
     KeysModule,
+    GeneralModule,
     MongooseModule.forFeature([
       {
         name: 'ConditionPack',

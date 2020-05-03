@@ -5,33 +5,21 @@ import { ExchangeCoordinatorService } from '../exchange-coordinator/exchange-coo
 
 @Controller('technical-indicators')
 export class TechnicalIndicatorsController {
-  constructor(
-    private tulip: TechnicalIndicatorsService,
-    private historic: ExchangeCoordinatorService,
-  ) {}
+  constructor(private tulip: TechnicalIndicatorsService, private historic: ExchangeCoordinatorService) {}
 
   @Get()
   getTulipVersion() {
     return this.tulip.getVersion();
   }
 
- @Get('/all')
+  @Get('/all')
   getAllIndicators() {
-    return this.tulip.getClient().indicators;
+    return this.tulip.returnCustomIndicators();
   }
 
   @Post()
-  async resolveTechnicalIndicator(
-    @Body() technicalPack: PaqueteIndicadorTecnico,
-  ) {
-    let historico: Array<
-      any
-    > = await this.historic.devolverHistoricoDependendiendoDelEXCHANGE(
-      technicalPack,
-    );
-    return this.tulip.evaluateIndicator(
-      technicalPack.indicatorParams,
-      historico,
-    );
+  async resolveTechnicalIndicator(@Body() technicalPack: PaqueteIndicadorTecnico) {
+    let historico: Array<any> = await this.historic.devolverHistoricoDependendiendoDelEXCHANGE(technicalPack);
+    return this.tulip.evaluateIndicator(technicalPack.indicatorParams, historico);
   }
 }

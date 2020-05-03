@@ -2,7 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConditionService } from './condition/condition.service';
 import { ExtendedCronExpresionsModel } from './models/ExtendedCronExpresions';
-import { timer, Observable } from 'rxjs';
+import { GeneralService } from './general/general.service';
+import { forkJoin, of, Observable } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { ConditionExcutionerService } from './condition/services/condition-excutioner/condition-excutioner.service';
 @Injectable()
 export class AppService {
@@ -10,7 +12,7 @@ export class AppService {
   constructor(private condicionService: ConditionService, private conditionExecutioner: ConditionExcutionerService) {}
 
   @Cron(CronExpression.EVERY_MINUTE)
-  handleCron1MIN() {
+  async handleCron1MIN() {
     this.handleCronByTimeFrame('1m', '1 minute');
   }
 

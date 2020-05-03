@@ -1,4 +1,4 @@
-import { Injectable, HttpException } from '@nestjs/common';
+import { Injectable, HttpException, Logger } from '@nestjs/common';
 import { ConditionService } from 'src/condition/condition.service';
 import { FullConditionsModel, ConditionPack } from 'src/condition/schemas/Conditions.schema';
 import { BacktestedConditionModel } from 'src/models/PaqueteIndicadorTecnico';
@@ -12,6 +12,8 @@ import { FuturesAccountInfo, FuturesOrderInfo, WrapperSchemaFuturesOrderInfo } f
 import { InjectModel } from '@nestjs/mongoose';
 import { cloneDeep, clone } from 'lodash';
 import { Model } from 'mongoose';
+import { GeneralService } from 'src/general/general.service';
+import * as moment from 'moment';
 export interface UltimoPenultimoCumplimientoRegistro {
   ultimo: boolean;
   penultimo: boolean;
@@ -19,10 +21,12 @@ export interface UltimoPenultimoCumplimientoRegistro {
 
 @Injectable()
 export class ConditionExcutionerService {
+  private readonly logger = new Logger(ConditionExcutionerService.name);
   constructor(
     private conditionService: ConditionService,
     private keysService: KeysService,
     private exchangeCoordinator: ExchangeCoordinatorService,
+    private generalService: GeneralService,
     @InjectModel('ConditionLogs') private conditionLogs: Model<WrapperSchemaFuturesOrderInfo>,
   ) {}
 
@@ -78,21 +82,25 @@ export class ConditionExcutionerService {
       if (condicionMongoDb.conditionConfig && condicionMongoDb.conditionConfig.length > 0) {
         this.conditionService.getLatestTechnicalAndHistoricDataFromCondition(condicionMongoDb).then(historicDataAndTechnical => {
           condicionMongoDb.conditionConfig.forEach(configCondition => {
-            //Cada vez que se activa este metodo, es cuando una vela ha cerrado, por lo que debo comprobar la vela anterior si cumple las condiciones ( restar -2 al array)
-            let cumplimientoUltimosRegistros = this.comprobacionCumplimientoUltimosRegistros(configCondition, historicDataAndTechnical);
-            console.log(
-              historicDataAndTechnical.extraData.technical.slice(Math.max(historicDataAndTechnical.extraData.technical.length - 5, 0)),
-            );
+            if (configCondition.state == 'started') {
+              //Cada vez que se activa este metodo, es cuando una vela ha cerrado, por lo que debo comprobar la vela anterior si cumple las condiciones ( restar -2 al array)
+              let cumplimientoUltimosRegistros = this.comprobacionCumplimientoUltimosRegistros(configCondition, historicDataAndTechnical);
+              console.log(
+                historicDataAndTechnical.extraData.technical.slice(Math.max(historicDataAndTechnical.extraData.technical.length - 5, 0)),
+              );
 
-            if (cumplimientoUltimosRegistros.ultimo && !cumplimientoUltimosRegistros.penultimo) {
-              this.prepareToExecuteOrder(configCondition, condicionMongoDb, observer);
-            } else {
-              let cumplimientoSalida = this.comprobacionCumplimientoSalidaSoloUltimoRegistro(configCondition, historicDataAndTechnical);
-              if (cumplimientoSalida) {
-                this.ejecutarSalida(configCondition, condicionMongoDb, observer);
+              if (cumplimientoUltimosRegistros.ultimo && !cumplimientoUltimosRegistros.penultimo) {
+                this.prepareToExecuteOrder(configCondition, condicionMongoDb, observer);
               } else {
-                console.warn('Condition test executed , but no conditions matched');
+                let cumplimientoSalida = this.comprobacionCumplimientoSalidaSoloUltimoRegistro(configCondition, historicDataAndTechnical);
+                if (cumplimientoSalida) {
+                  this.ejecutarSalida(configCondition, condicionMongoDb, observer);
+                } else {
+                  console.warn('Condition test executed , but no conditions matched');
+                }
               }
+            } else {
+              this.logger.debug(`The condition ${configCondition.name} has not been init.`)
             }
           });
         });
@@ -175,6 +183,15 @@ export class ConditionExcutionerService {
           data.subscribe((data: FuturesOrderInfo) => {
             if (data.clientOrderId) {
               this.inserTradeLog(data, wrapperCondiciones.indicatorConfig.exchange, ultimoPrecioAsset, Date.now());
+              this.generalService.sendNotificationToSpecificUser(
+                wrapperCondiciones.user,
+                this.generalService.generateNotification(
+                  `Position opened ${data.side}`,
+                  `A position was opened at ${ultimoPrecioAsset}$ at ${moment()
+                    .format('DD/MM/YYYY HH:MM')
+                    .toString()} with ${data.cumQty} size.`,
+                ),
+              );
             }
           });
         });
@@ -182,7 +199,6 @@ export class ConditionExcutionerService {
         console.log('El usuario debe ingresar más pasta :D');
       }
     }
-    //emisorRespuesta.next([cuenta]);
   }
 
   public comprobacionCumplimientoUltimosRegistros(
@@ -307,6 +323,15 @@ export class ConditionExcutionerService {
               tradeWRapper.trade.symbol,
             );
             this.changeStatusOfLog('cerrado', tradeWRapper.id, { closePrice: price, closeTime: Date.now() });
+            this.generalService.sendNotificationToSpecificUser(
+              userKeys.user,
+              this.generalService.generateNotification(
+                `Position closed ${data.side}`,
+                `A position was closed at ${tradeWRapper.metadata.closePrice}$ at ${moment()
+                  .format('DD/MM/YYYY HH:MM')
+                  .toString()} with ${tradeWRapper.metadata.profitability}$ / ${tradeWRapper.metadata.profitabilityChange}%`,
+              ),
+            );
           }
         }),
       );
