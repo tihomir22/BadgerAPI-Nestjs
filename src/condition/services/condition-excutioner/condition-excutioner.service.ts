@@ -38,12 +38,12 @@ export class ConditionExcutionerService {
       this.exchangeCoordinator.returnFuturesAccountInfoFromSpecificExchange({
         public: keyUsuarioObtenida.publicK,
         private: keyUsuarioObtenida.privateK,
-        exchange: condicionMongoDb.indicatorConfig.exchange,
+        exchange: condicionMongoDb.generalConfig.exchange,
       }),
-      this.exchangeCoordinator.returnFuturesExchangeInfoFromSpecificExchange(condicionMongoDb.indicatorConfig.exchange),
+      this.exchangeCoordinator.returnFuturesExchangeInfoFromSpecificExchange(condicionMongoDb.generalConfig.exchange),
       this.exchangeCoordinator.returnPriceOfAssetDependingOnExchange(
-        condicionMongoDb.indicatorConfig.exchange,
-        condicionMongoDb.indicatorConfig.historicParams.symbol,
+        condicionMongoDb.generalConfig.exchange,
+        condicionMongoDb.generalConfig.historicParams.symbol,
       ),
     ]);
   }
@@ -85,6 +85,7 @@ export class ConditionExcutionerService {
             if (configCondition.state == 'started') {
               //Cada vez que se activa este metodo, es cuando una vela ha cerrado, por lo que debo comprobar la vela anterior si cumple las condiciones ( restar -2 al array)
               let cumplimientoUltimosRegistros = this.comprobacionCumplimientoUltimosRegistros(configCondition, historicDataAndTechnical);
+
               console.log(
                 historicDataAndTechnical.extraData.technical.slice(Math.max(historicDataAndTechnical.extraData.technical.length - 5, 0)),
               );
@@ -100,7 +101,7 @@ export class ConditionExcutionerService {
                 }
               }
             } else {
-              this.logger.debug(`The condition ${configCondition.name} has not been init.`)
+              this.logger.debug(`The condition ${configCondition.name} has not been init.`);
             }
           });
         });
@@ -110,7 +111,7 @@ export class ConditionExcutionerService {
 
   private async ejecutarSalida(configCondition: FullConditionsModel, condicionMongoDb: ConditionPack, observer: Observer<any>) {
     let keysUsuario = await this.keysService.returnKeysByUserID(condicionMongoDb.user);
-    let keyUsuarioObtenida = BadgerUtils.busquedaKeysValida(keysUsuario, condicionMongoDb.indicatorConfig.exchange);
+    let keyUsuarioObtenida = BadgerUtils.busquedaKeysValida(keysUsuario, condicionMongoDb.generalConfig.exchange);
     if (keyUsuarioObtenida) {
       await this.closeTrades(configCondition.id, condicionMongoDb.user, keyUsuarioObtenida);
     }
@@ -118,7 +119,7 @@ export class ConditionExcutionerService {
 
   public prepareToExecuteOrder(subCondicion: FullConditionsModel, wrapperCondiciones: ConditionPack, emisorRespuesta: Observer<any>) {
     this.keysService.returnKeysByUserID(wrapperCondiciones.user).then(keysDelUser => {
-      let keyUsuarioObtenida = BadgerUtils.busquedaKeysValida(keysDelUser, wrapperCondiciones.indicatorConfig.exchange);
+      let keyUsuarioObtenida = BadgerUtils.busquedaKeysValida(keysDelUser, wrapperCondiciones.generalConfig.exchange);
       if (keyUsuarioObtenida) {
         this.obtainAccountInfoAndFuturesExchangeInfo(keyUsuarioObtenida, wrapperCondiciones).subscribe(async data => {
           //Obtencion de datos
@@ -128,7 +129,7 @@ export class ConditionExcutionerService {
           //Cuando apliquemos cantidades fijas, debemos tenerlas en cuenta en vez de obtener todas las posesiones del usuario
           let cantidadEnTetherDelUsuario = parseFloat(cuenta.find(entry => entry.asset === 'USDT').withdrawAvailable);
           let futureAssetInfo = exchangeInfo.symbols.find(
-            exchangeSymbol => exchangeSymbol.symbol.toLowerCase() == wrapperCondiciones.indicatorConfig.historicParams.symbol.toLowerCase(),
+            exchangeSymbol => exchangeSymbol.symbol.toLowerCase() == wrapperCondiciones.generalConfig.historicParams.symbol.toLowerCase(),
           );
 
           if (futureAssetInfo) {
@@ -173,16 +174,16 @@ export class ConditionExcutionerService {
         this.executeOrder(
           keyUsuarioObtenida,
           wrapperCondiciones.user + ':' + Math.floor(Math.random() * 100) + 1 + ':' + subCondicion.id,
-          wrapperCondiciones.indicatorConfig.historicParams.symbol,
+          wrapperCondiciones.generalConfig.historicParams.symbol,
           subCondicion.enter.doWhat.toUpperCase().trim() as any,
           subCondicion.enter.doWhat.toUpperCase().trim() == 'BUY' ? 'LONG' : 'SHORT',
           'MARKET',
           cantidadAInvertirEnSiguienteOperacionBTC,
-          wrapperCondiciones.indicatorConfig.exchange,
+          wrapperCondiciones.generalConfig.exchange,
         ).then(data => {
           data.subscribe((data: FuturesOrderInfo) => {
             if (data.clientOrderId) {
-              this.inserTradeLog(data, wrapperCondiciones.indicatorConfig.exchange, ultimoPrecioAsset, Date.now());
+              this.inserTradeLog(data, wrapperCondiciones.generalConfig.exchange, ultimoPrecioAsset, Date.now());
               this.generalService.sendNotificationToSpecificUser(
                 wrapperCondiciones.user,
                 this.generalService.generateNotification(
@@ -208,13 +209,13 @@ export class ConditionExcutionerService {
     let cumplimientoUltimoRegistro = this.conditionService.detectIfConditionIsAccomplishedWithSingleEntry(
       configCondition.enter.activateWhen,
       configCondition.enter.value,
-      historicDataAndTechnical.extraData.technical[historicDataAndTechnical.extraData.technical.length - 2],
+      historicDataAndTechnical.extraData.technical[0][historicDataAndTechnical.extraData.technical.length - 2],
     );
-
+    //TODO INDICE 0 REVISAR
     let cumplimientoPenultimoRegistro = this.conditionService.detectIfConditionIsAccomplishedWithSingleEntry(
       configCondition.enter.activateWhen,
       configCondition.enter.value,
-      historicDataAndTechnical.extraData.technical[historicDataAndTechnical.extraData.technical.length - 3],
+      historicDataAndTechnical.extraData.technical[0][historicDataAndTechnical.extraData.technical.length - 3],
     );
 
     return {
@@ -231,11 +232,11 @@ export class ConditionExcutionerService {
       configCondition.exit.typeExit == 'indicator'
         ? historicDataAndTechnical.extraData.technical[historicDataAndTechnical.extraData.technical.length - 2]
         : historicDataAndTechnical.extraData.historic[historicDataAndTechnical.extraData.historic.length - 2].close;
-
+    //TODO REVISAR INDICE 0
     return this.conditionService.detectIfConditionIsAccomplishedWithSingleEntry(
       configCondition.exit.closeWhen,
       configCondition.exit.value,
-      basedValueToexit,
+      basedValueToexit[0],
     );
   }
 

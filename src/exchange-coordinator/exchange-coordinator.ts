@@ -11,6 +11,7 @@ import * as request from 'request';
 import { ExchangeConstants } from './constants/ExchangeConstants';
 import { PrivateRequestsKeysWithExchange, BaseBinanceModel } from 'src/models/PrivateRequestsModel';
 import { Account } from 'binance-api-node';
+import { GeneralConfig } from 'src/condition/schemas/Conditions.schema';
 
 @Injectable()
 export class ExchangeCoordinatorService {
@@ -184,16 +185,16 @@ export class ExchangeCoordinatorService {
     }
   }
 
-  async devolverHistoricoDependendiendoDelEXCHANGE(technicalPack: PaqueteIndicadorTecnico) {
-    switch (technicalPack.exchange.toLowerCase()) {
+  async devolverHistoricoDependendiendoDelEXCHANGE(generalConfig:GeneralConfig) {
+    switch (generalConfig.exchange.toLowerCase()) {
       case 'binance':
         return await this.binance.returnHistoric(
-          technicalPack.historicParams.symbol,
-          technicalPack.historicParams.interval,
-          technicalPack.historicParams.limit,
+          generalConfig.historicParams.symbol,
+          generalConfig.historicParams.interval,
+          generalConfig.historicParams.limit,
         );
       default:
-        throw new HttpException('The exchange ' + technicalPack.exchange + ' was not found!', 404);
+        throw new HttpException('The exchange ' + generalConfig.exchange + ' was not found!', 404);
     }
   }
 }

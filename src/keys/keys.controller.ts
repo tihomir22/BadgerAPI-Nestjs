@@ -24,4 +24,8 @@ export class KeysController {
   getKeys(@Param('user') user: string) {
     return this.keyService.returnKeysByUserID(user);
   }
+
+  @Get('lookForValidKey/:user') lookForValidKey(@Param('user') user: string) {
+    return this.keyService.lookForValidKey(user);
+  }
 }

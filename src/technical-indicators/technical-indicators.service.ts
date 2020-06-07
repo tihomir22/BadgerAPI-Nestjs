@@ -29,8 +29,17 @@ export class TechnicalIndicatorsService {
     this.customTechnicalIndicators = objRes;
   }
 
-  public returnCustomIndicators() {
+  public returnCustomIndicators(): Array<any> {
     return this.customTechnicalIndicators ? this.customTechnicalIndicators : this.publicClient.indicators;
+  }
+
+  public returnByName(name: string) {
+    let indicator = this.returnCustomIndicators()[name];
+    if (indicator) {
+      return indicator;
+    } else {
+      throw new HttpException('Indicator ' + name + ' not found.', 404);
+    }
   }
 
   public getVersion() {
@@ -101,6 +110,7 @@ export class TechnicalIndicatorsService {
       historic: arrayHistorico,
       technical: arrayIndicadorTecnico,
       outputNames: this.publicClient.indicators[indicatorName].output_names,
+      metadataIndicator: this.returnCustomIndicators()[indicatorName],
     };
   }
 

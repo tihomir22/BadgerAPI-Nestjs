@@ -84,11 +84,11 @@ export class ConditionService {
   }
 
   async guardarCondicion(condicion: ConditionPack) {
-    if (condicion.conditionConfig && condicion.indicatorConfig && condicion.user) {
-      const createdCondition = new this.conditionModel({
+    if (condicion.conditionConfig && condicion.conditionConfig.every(entry => entry.indicatorConfig) && condicion.user) {
+      const createdCondition: ConditionPack = new this.conditionModel({
         user: condicion.user,
         conditionConfig: condicion.conditionConfig,
-        indicatorConfig: condicion.indicatorConfig,
+        generalConfig: condicion.generalConfig,
       });
       return await createdCondition.save();
     } else {
@@ -97,19 +97,19 @@ export class ConditionService {
   }
 
   async getLatestTechnicalAndHistoricDataFromCondition(condicion: ConditionPack): Promise<BacktestedConditionModel> {
+    //=>STATIC<=
     return {
       fulfilled: [],
       extraData: await this.indicatorService.evaluateIndicator(
-        condicion.indicatorConfig.indicatorParams,
-        await (this.exchangeCoordinator.devolverHistoricoDependendiendoDelEXCHANGE(condicion.indicatorConfig) as any),
+        condicion.conditionConfig[0].indicatorConfig[0].indicatorParams,
+        await (this.exchangeCoordinator.devolverHistoricoDependendiendoDelEXCHANGE(condicion.generalConfig) as any),
       ),
     };
   }
 
   async backtestCondition(condicion: ConditionPack) {
-    if (condicion.conditionConfig && condicion.indicatorConfig && condicion.user) {
+    if (condicion.conditionConfig && condicion.conditionConfig.every(entry => entry.indicatorConfig) && condicion.user) {
       let indicatorData: BacktestedConditionModel = await this.getLatestTechnicalAndHistoricDataFromCondition(condicion);
-
       condicion.conditionConfig.forEach(condicion => {
         let res: Array<any> = this.detectIfConditionAccomplished(condicion, indicatorData);
         condicion = res[0];
@@ -150,81 +150,83 @@ export class ConditionService {
 
   private detectIfAccomplishedConditionHasEnded(condicion: FullConditionsModel, technicalData: BacktestedConditionModel): Array<any> {
     if (condicion.exit && condicion.exit.closeWhen && condicion.exit.value) {
-      for (let i = 0; i < technicalData.extraData.technical.length; i++) {
-        if (technicalData.extraData.technical[i] != null) {
-          switch (condicion.exit.closeWhen) {
-            case 'above':
-              if (condicion.exit.typeExit == 'indicator') {
-                if (technicalData.extraData.technical[i] >= condicion.exit.value) {
-                  this.closeAllEntriesBeforeThisIndex(
-                    i,
-                    technicalData,
-                    new Date(technicalData.extraData.historic[i].closeTime),
-                    technicalData.extraData.technical[i],
-                    technicalData.extraData.historic[i].close,
-                  );
+      technicalData.extraData.technical.forEach(technicalEntryData => {
+        for (let i = 0; i < technicalEntryData.length; i++) {
+          if (technicalEntryData[i] != null) {
+            switch (condicion.exit.closeWhen) {
+              case 'above':
+                if (condicion.exit.typeExit == 'indicator') {
+                  if (technicalEntryData[i] >= condicion.exit.value) {
+                    this.closeAllEntriesBeforeThisIndex(
+                      i,
+                      technicalData,
+                      new Date(technicalData.extraData.historic[i].closeTime),
+                      technicalEntryData[i],
+                      technicalData.extraData.historic[i].close,
+                    );
+                  }
+                } else if (condicion.exit.typeExit == 'price') {
+                  if (technicalData.extraData.historic[i].close >= condicion.exit.value) {
+                    this.closeAllEntriesBeforeThisIndex(
+                      i,
+                      technicalData,
+                      new Date(technicalData.extraData.historic[i].closeTime),
+                      technicalEntryData[i],
+                      technicalData.extraData.historic[i].close,
+                    );
+                  }
                 }
-              } else if (condicion.exit.typeExit == 'price') {
-                if (technicalData.extraData.historic[i].close >= condicion.exit.value) {
-                  this.closeAllEntriesBeforeThisIndex(
-                    i,
-                    technicalData,
-                    new Date(technicalData.extraData.historic[i].closeTime),
-                    technicalData.extraData.technical[i],
-                    technicalData.extraData.historic[i].close,
-                  );
-                }
-              }
-              break;
+                break;
 
-            case 'below':
-              if (condicion.exit.typeExit == 'indicator') {
-                if (technicalData.extraData.technical[i] <= condicion.exit.value) {
-                  this.closeAllEntriesBeforeThisIndex(
-                    i,
-                    technicalData,
-                    new Date(technicalData.extraData.historic[i].closeTime),
-                    technicalData.extraData.technical[i],
-                    technicalData.extraData.historic[i].close,
-                  );
+              case 'below':
+                if (condicion.exit.typeExit == 'indicator') {
+                  if (technicalEntryData[i] <= condicion.exit.value) {
+                    this.closeAllEntriesBeforeThisIndex(
+                      i,
+                      technicalData,
+                      new Date(technicalData.extraData.historic[i].closeTime),
+                      technicalEntryData[i],
+                      technicalData.extraData.historic[i].close,
+                    );
+                  }
+                } else if (condicion.exit.typeExit == 'price') {
+                  if (technicalData.extraData.historic[i].close <= condicion.exit.value) {
+                    this.closeAllEntriesBeforeThisIndex(
+                      i,
+                      technicalData,
+                      new Date(technicalData.extraData.historic[i].closeTime),
+                      technicalEntryData[i],
+                      technicalData.extraData.historic[i].close,
+                    );
+                  }
                 }
-              } else if (condicion.exit.typeExit == 'price') {
-                if (technicalData.extraData.historic[i].close <= condicion.exit.value) {
-                  this.closeAllEntriesBeforeThisIndex(
-                    i,
-                    technicalData,
-                    new Date(technicalData.extraData.historic[i].closeTime),
-                    technicalData.extraData.technical[i],
-                    technicalData.extraData.historic[i].close,
-                  );
+              case 'equals':
+                if (condicion.exit.typeExit == 'indicator') {
+                  if (technicalEntryData[i] === condicion.exit.value) {
+                    this.closeAllEntriesBeforeThisIndex(
+                      i,
+                      technicalData,
+                      new Date(technicalData.extraData.historic[i].closeTime),
+                      technicalEntryData[i],
+                      technicalData.extraData.historic[i].close,
+                    );
+                  }
+                } else if (condicion.exit.typeExit == 'price') {
+                  if (technicalData.extraData.historic[i].close === condicion.exit.value) {
+                    this.closeAllEntriesBeforeThisIndex(
+                      i,
+                      technicalData,
+                      new Date(technicalData.extraData.historic[i].closeTime),
+                      technicalEntryData[i],
+                      technicalData.extraData.historic[i].close,
+                    );
+                  }
                 }
-              }
-            case 'equals':
-              if (condicion.exit.typeExit == 'indicator') {
-                if (technicalData.extraData.technical[i] === condicion.exit.value) {
-                  this.closeAllEntriesBeforeThisIndex(
-                    i,
-                    technicalData,
-                    new Date(technicalData.extraData.historic[i].closeTime),
-                    technicalData.extraData.technical[i],
-                    technicalData.extraData.historic[i].close,
-                  );
-                }
-              } else if (condicion.exit.typeExit == 'price') {
-                if (technicalData.extraData.historic[i].close === condicion.exit.value) {
-                  this.closeAllEntriesBeforeThisIndex(
-                    i,
-                    technicalData,
-                    new Date(technicalData.extraData.historic[i].closeTime),
-                    technicalData.extraData.technical[i],
-                    technicalData.extraData.historic[i].close,
-                  );
-                }
-              }
-              break;
+                break;
+            }
           }
         }
-      }
+      });
     }
     return [condicion, technicalData];
   }
@@ -255,39 +257,42 @@ export class ConditionService {
     let detectadoCumplimiento = false;
     let seEstaCumpliendoLaCondicion = false;
     //Por cada condicion...
-    for (let i = 0; i < technicalData.extraData.technical.length; i++) {
-      const registroTecnico = technicalData.extraData.technical[i];
-      if (registroTecnico != null) {
-        detectadoCumplimiento = this.detectIfConditionIsAccomplishedWithSingleEntry(
-          condicion.enter.activateWhen,
-          condicion.enter.value,
-          registroTecnico,
-        );
-        let resdetectIfConditionAccomplishmentEnded: Array<any> = this.detectIfConditionAccomplishmentEnded(
-          detectadoCumplimiento,
-          seEstaCumpliendoLaCondicion,
-        );
-        detectadoCumplimiento = resdetectIfConditionAccomplishmentEnded[0];
-        seEstaCumpliendoLaCondicion = resdetectIfConditionAccomplishmentEnded[1];
-        if (detectadoCumplimiento && registroTecnico != null) {
-          technicalData.fulfilled[i] = {
-            id: +new Date() + 'CDN',
-            priceEnter: technicalData.extraData.historic[i].close,
-            indicatorEnter: registroTecnico,
-            dateEnter: new Date(technicalData.extraData.historic[i].openTime),
-            priceExit: null,
-            indicatorExit: null,
-            dateExit: null,
-          };
+    technicalData.extraData.technical.forEach(technicalArrayOfData => {
+      for (let i = 0; i < technicalArrayOfData.length; i++) {
+        const registroTecnico = technicalArrayOfData[i];
+        if (registroTecnico != null) {
+          console.log(registroTecnico);
+          detectadoCumplimiento = this.detectIfConditionIsAccomplishedWithSingleEntry(
+            condicion.enter.activateWhen,
+            condicion.enter.value,
+            registroTecnico,
+          );
+          let resdetectIfConditionAccomplishmentEnded: Array<any> = this.detectIfConditionAccomplishmentEnded(
+            detectadoCumplimiento,
+            seEstaCumpliendoLaCondicion,
+          );
+          detectadoCumplimiento = resdetectIfConditionAccomplishmentEnded[0];
+          seEstaCumpliendoLaCondicion = resdetectIfConditionAccomplishmentEnded[1];
+          if (detectadoCumplimiento && registroTecnico != null) {
+            technicalData.fulfilled[i] = {
+              id: +new Date() + 'CDN',
+              priceEnter: technicalData.extraData.historic[i].close,
+              indicatorEnter: registroTecnico,
+              dateEnter: new Date(technicalData.extraData.historic[i].openTime),
+              priceExit: null,
+              indicatorExit: null,
+              dateExit: null,
+            };
+          } else {
+            technicalData.fulfilled[i] = null;
+          }
+          detectadoCumplimiento = false;
         } else {
           technicalData.fulfilled[i] = null;
         }
-        detectadoCumplimiento = false;
-      } else {
-        technicalData.fulfilled[i] = null;
       }
-    }
-
+    });
+    console.log([condicion, technicalData]);
     return [condicion, technicalData];
   }
 

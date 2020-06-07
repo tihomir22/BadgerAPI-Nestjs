@@ -1,8 +1,6 @@
 import { HistoricRegistry } from './HistoricRegistry';
 
 export interface PaqueteIndicadorTecnico {
-  exchange: string;
-  historicParams: HistoricParams;
   indicatorParams: IndicatorParams;
 }
 
@@ -36,5 +34,5 @@ export interface FullfillmentModel {
 
 export interface ServerResponseIndicator {
   historic: Array<HistoricRegistry>;
-  technical: Array<number>;
+  technical: Array<Array<number>>;
 }
