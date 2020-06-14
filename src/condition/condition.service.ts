@@ -1,5 +1,5 @@
 import { Injectable, HttpException } from '@nestjs/common';
-import { FullConditionsModel, ConditionPack, DeleteConditionsById } from './schemas/Conditions.schema';
+import { FullConditionsModel, ConditionPack, DeleteConditionsById, GeneralConfig } from './schemas/Conditions.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ExchangeCoordinatorService } from '../exchange-coordinator/exchange-coordinator';
@@ -27,7 +27,7 @@ export class ConditionService {
   async returnConditionsByTimeFrame(
     timeFrame: '1m' | '3m' | '5m' | '15m' | '30m' | '1h' | '2h' | '4h' | '6h' | '8h' | '12h' | '1d' | '3d' | '1w' | '1M',
   ) {
-    return await this.conditionModel.find({ 'indicatorConfig.historicParams.interval': timeFrame });
+    return await this.conditionModel.find({ 'generalConfig.historicParams.interval': timeFrame });
   }
 
   async changeState(encondedConditionId: any, conditionState: string) {
@@ -96,20 +96,26 @@ export class ConditionService {
     }
   }
 
-  async getLatestTechnicalAndHistoricDataFromCondition(condicion: ConditionPack): Promise<BacktestedConditionModel> {
+  async getLatestTechnicalAndHistoricDataFromCondition(
+    condicion: FullConditionsModel,
+    generalConfig: GeneralConfig,
+  ): Promise<BacktestedConditionModel> {
     //=>STATIC<=
     return {
       fulfilled: [],
       extraData: await this.indicatorService.evaluateIndicator(
-        condicion.conditionConfig[0].indicatorConfig[0].indicatorParams,
-        await (this.exchangeCoordinator.devolverHistoricoDependendiendoDelEXCHANGE(condicion.generalConfig) as any),
+        condicion.indicatorConfig[0].indicatorParams,
+        await (this.exchangeCoordinator.devolverHistoricoDependendiendoDelEXCHANGE(generalConfig) as any),
       ),
     };
   }
 
   async backtestCondition(condicion: ConditionPack) {
     if (condicion.conditionConfig && condicion.conditionConfig.every(entry => entry.indicatorConfig) && condicion.user) {
-      let indicatorData: BacktestedConditionModel = await this.getLatestTechnicalAndHistoricDataFromCondition(condicion);
+      let indicatorData: BacktestedConditionModel = await this.getLatestTechnicalAndHistoricDataFromCondition(
+        condicion.conditionConfig[0],
+        condicion.generalConfig,
+      );
       condicion.conditionConfig.forEach(condicion => {
         let res: Array<any> = this.detectIfConditionAccomplished(condicion, indicatorData);
         condicion = res[0];

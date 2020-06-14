@@ -1,11 +1,11 @@
 import { Injectable, HttpException, Logger } from '@nestjs/common';
 import { ConditionService } from 'src/condition/condition.service';
-import { FullConditionsModel, ConditionPack } from 'src/condition/schemas/Conditions.schema';
+import { FullConditionsModel, ConditionPack, GeneralConfig } from 'src/condition/schemas/Conditions.schema';
 import { BacktestedConditionModel } from 'src/models/PaqueteIndicadorTecnico';
 import { KeysService } from 'src/keys/keys.service';
 import { ExchangeCoordinatorService } from 'src/exchange-coordinator/exchange-coordinator';
 import { BadgerUtils } from 'src/static/Utils';
-import { forkJoin, Observer, Observable, of, config } from 'rxjs';
+import { forkJoin, Observer, Observable, of, config, timer } from 'rxjs';
 import { ExchangeInfo, Account } from 'binance-api-node';
 import { UserKey } from 'src/keys/schemas/UserKeys.schema';
 import { FuturesAccountInfo, FuturesOrderInfo, WrapperSchemaFuturesOrderInfo } from 'src/models/FuturesAccountInfo';
@@ -14,9 +14,15 @@ import { cloneDeep, clone } from 'lodash';
 import { Model } from 'mongoose';
 import { GeneralService } from 'src/general/general.service';
 import * as moment from 'moment';
+import { isBoolean } from 'util';
 export interface UltimoPenultimoCumplimientoRegistro {
   ultimo: boolean;
   penultimo: boolean;
+}
+
+export interface EstadoEntradaSalidaCondicionEncadenada {
+  entrada: boolean;
+  salida: boolean;
 }
 
 @Injectable()
@@ -77,33 +83,175 @@ export class ConditionExcutionerService {
     );
   }
 
+  private seCumpleCondicion(ultimoPenultimo: UltimoPenultimoCumplimientoRegistro) {
+    return ultimoPenultimo.ultimo && !ultimoPenultimo.penultimo;
+  }
+
+  private seCumpleCondicionEncadenada(
+    ultimoPenultimoNodoA: UltimoPenultimoCumplimientoRegistro,
+    ultimoPenultimoNodoB: UltimoPenultimoCumplimientoRegistro,
+    tipoEncadenacion: 'AND' | 'OR',
+  ) {
+    switch (tipoEncadenacion.toUpperCase()) {
+      case 'AND':
+        return this.seCumpleCondicion(ultimoPenultimoNodoA) && this.seCumpleCondicion(ultimoPenultimoNodoB);
+      case 'OR':
+        return this.seCumpleCondicion(ultimoPenultimoNodoA) || this.seCumpleCondicion(ultimoPenultimoNodoB);
+      default:
+        break;
+    }
+  }
+
+  private seCumpleSalidaEncadenada(ultimoPenultimoNodoA: boolean, ultimoPenultimoNodoB: boolean, tipoEncadenacion: 'AND' | 'OR') {
+    switch (tipoEncadenacion.toUpperCase()) {
+      case 'AND':
+        return ultimoPenultimoNodoA && ultimoPenultimoNodoB;
+      case 'OR':
+        return ultimoPenultimoNodoA || ultimoPenultimoNodoB;
+      default:
+        break;
+    }
+  }
+
+  private async executePreparationsBasicCondition(configCondition: FullConditionsModel, conditionPack: ConditionPack) {
+    if (configCondition.state == 'started') {
+      let historicDataAndTechnical = await this.conditionService.getLatestTechnicalAndHistoricDataFromCondition(
+        configCondition,
+        conditionPack.generalConfig,
+      );
+      //Cada vez que se activa este metodo, es cuando una vela ha cerrado, por lo que debo comprobar la vela anterior si cumple las condiciones ( restar -2 al array)
+      let cumplimientoUltimosRegistros = this.comprobacionCumplimientoUltimosRegistros(configCondition, historicDataAndTechnical);
+
+      if (this.seCumpleCondicion(cumplimientoUltimosRegistros)) {
+        this.prepareToExecuteOrder(configCondition, conditionPack, null);
+      } else if (configCondition.exit) {
+        let cumplimientoSalida = this.comprobacionCumplimientoSalidaSoloUltimoRegistro(configCondition, historicDataAndTechnical);
+        if (isBoolean(cumplimientoSalida)) {
+          this.ejecutarSalida(configCondition, conditionPack, null);
+        }
+      } else {
+        console.warn('Condition test executed , but no conditions matched');
+      }
+    } else {
+      this.logger.debug(`The condition ${configCondition.name} has not been init.`);
+    }
+  }
+
+  private async compareWithChildNode(
+    mainNodeCondition: FullConditionsModel,
+    nodoHijoEncontrado: FullConditionsModel,
+    generalData: GeneralConfig,
+    latestStatus: EstadoEntradaSalidaCondicionEncadenada,
+  ): Promise<EstadoEntradaSalidaCondicionEncadenada> {
+    let [mainNodeTechnicalData, childNodeTechnicalData] = await Promise.all([
+      this.conditionService.getLatestTechnicalAndHistoricDataFromCondition(mainNodeCondition, generalData),
+      this.conditionService.getLatestTechnicalAndHistoricDataFromCondition(nodoHijoEncontrado, generalData),
+    ]);
+    let cumplimientoRegistrosNodeA = this.comprobacionCumplimientoUltimosRegistros(mainNodeCondition, mainNodeTechnicalData);
+    let cumplimientoRegistrosNodeB = this.comprobacionCumplimientoUltimosRegistros(nodoHijoEncontrado, childNodeTechnicalData);
+
+    let cumplimientoSalidaNodeA = this.comprobacionCumplimientoSalidaSoloUltimoRegistro(mainNodeCondition, mainNodeTechnicalData);
+    let cumplimientoSalidaNodeB = this.comprobacionCumplimientoSalidaSoloUltimoRegistro(nodoHijoEncontrado, childNodeTechnicalData);
+    if (cumplimientoRegistrosNodeA == null) cumplimientoSalidaNodeA = latestStatus.salida;
+    if (cumplimientoSalidaNodeB == null) cumplimientoSalidaNodeB = latestStatus.salida;
+    console.log(
+      mainNodeTechnicalData.extraData.technical[0].slice(Math.max(mainNodeTechnicalData.extraData.technical[0].length - 5, 0)),
+      childNodeTechnicalData.extraData.technical[0].slice(Math.max(childNodeTechnicalData.extraData.technical[0].length - 5, 0)),
+    );
+    console.log(cumplimientoRegistrosNodeA, cumplimientoRegistrosNodeB);
+
+    nodoHijoEncontrado.chainedTo.splice(
+      nodoHijoEncontrado.chainedTo.findIndex(entry => entry == mainNodeCondition.id),
+      1,
+    );
+    return {
+      entrada: this.seCumpleCondicionEncadenada(cumplimientoRegistrosNodeA, cumplimientoRegistrosNodeB, nodoHijoEncontrado.chainingType),
+      salida: this.seCumpleSalidaEncadenada(cumplimientoSalidaNodeA, cumplimientoSalidaNodeB, nodoHijoEncontrado.chainingType),
+    };
+  }
+
+  private recursivelyCheckIfChainedConditionsAreMet(
+    mainNodeCondition: FullConditionsModel,
+    allConditions: Array<FullConditionsModel>,
+    generalData: GeneralConfig,
+    conditionValidationStatus: EstadoEntradaSalidaCondicionEncadenada,
+    numeroCola: number,
+    numeroColaProcesados: number,
+    observer: Observer<EstadoEntradaSalidaCondicionEncadenada>,
+  ) {
+    mainNodeCondition.chainedTo.forEach(async (chainedConditionId, index) => {
+      let nodoHijoEncontrado = allConditions.find(entry => entry.id == chainedConditionId && entry.type == 'Chained');
+      if (nodoHijoEncontrado && conditionValidationStatus.entrada) {
+        numeroCola++;
+        conditionValidationStatus = await this.compareWithChildNode(
+          mainNodeCondition,
+          nodoHijoEncontrado,
+          generalData,
+          conditionValidationStatus,
+        );
+        numeroColaProcesados++;
+        if (conditionValidationStatus.entrada && nodoHijoEncontrado.chainedTo && nodoHijoEncontrado.chainedTo.length > 0) {
+          this.recursivelyCheckIfChainedConditionsAreMet(
+            nodoHijoEncontrado,
+            allConditions,
+            generalData,
+            conditionValidationStatus,
+            numeroCola,
+            numeroColaProcesados,
+            observer,
+          );
+        } else if (numeroCola === numeroColaProcesados && index == 0) observer.next(conditionValidationStatus);
+      } else if (numeroCola === numeroColaProcesados && index == 0) observer.next(conditionValidationStatus);
+    });
+  }
+
+  private executePreparationsNestedConditions(mainNodeCondition: FullConditionsModel, wrapperCondiciones: ConditionPack) {
+    if (mainNodeCondition.isMainChainingNode) {
+      if (mainNodeCondition.state == 'started') {
+        let validityStatus: EstadoEntradaSalidaCondicionEncadenada = { entrada: true, salida: false };
+        new Observable(observer => {
+          this.recursivelyCheckIfChainedConditionsAreMet(
+            mainNodeCondition,
+            wrapperCondiciones.conditionConfig,
+            wrapperCondiciones.generalConfig,
+            validityStatus,
+            0,
+            0,
+            observer,
+          );
+        }).subscribe((data: EstadoEntradaSalidaCondicionEncadenada) => {
+          //TODO comprobar que no se ejecuten duplicados
+          console.log('whoop', data);
+          if (data.entrada) {
+            this.prepareToExecuteOrder(mainNodeCondition, wrapperCondiciones, null);
+          } else if (data.salida) {
+            console.log('se debe cerrar');
+          } else {
+            this.logger.debug(`The chained conditions didn't match at all.`);
+          }
+        });
+      } else {
+        this.logger.debug(`The condition ${mainNodeCondition.name} is mainNode but not started.`);
+      }
+    } else {
+      this.logger.debug(`The condition ${mainNodeCondition.name} is not mainNode but chained, is ignored.`);
+    }
+  }
+
   public executePreparations(conditionPack: ConditionPack[], observer: Observer<any>) {
-    conditionPack.forEach(condicionMongoDb => {
-      if (condicionMongoDb.conditionConfig && condicionMongoDb.conditionConfig.length > 0) {
-        this.conditionService.getLatestTechnicalAndHistoricDataFromCondition(condicionMongoDb).then(historicDataAndTechnical => {
-          condicionMongoDb.conditionConfig.forEach(configCondition => {
-            if (configCondition.state == 'started') {
-              //Cada vez que se activa este metodo, es cuando una vela ha cerrado, por lo que debo comprobar la vela anterior si cumple las condiciones ( restar -2 al array)
-              let cumplimientoUltimosRegistros = this.comprobacionCumplimientoUltimosRegistros(configCondition, historicDataAndTechnical);
-
-              console.log(
-                historicDataAndTechnical.extraData.technical.slice(Math.max(historicDataAndTechnical.extraData.technical.length - 5, 0)),
-              );
-
-              if (cumplimientoUltimosRegistros.ultimo && !cumplimientoUltimosRegistros.penultimo) {
-                this.prepareToExecuteOrder(configCondition, condicionMongoDb, observer);
-              } else {
-                let cumplimientoSalida = this.comprobacionCumplimientoSalidaSoloUltimoRegistro(configCondition, historicDataAndTechnical);
-                if (cumplimientoSalida) {
-                  this.ejecutarSalida(configCondition, condicionMongoDb, observer);
-                } else {
-                  console.warn('Condition test executed , but no conditions matched');
-                }
-              }
-            } else {
-              this.logger.debug(`The condition ${configCondition.name} has not been init.`);
-            }
-          });
+    conditionPack.forEach(condicionWrapper => {
+      if (condicionWrapper.conditionConfig && condicionWrapper.conditionConfig.length > 0) {
+        condicionWrapper.conditionConfig.forEach(async configCondition => {
+          switch (configCondition.type) {
+            case 'Basic':
+              this.executePreparationsBasicCondition(configCondition, condicionWrapper);
+              break;
+            case 'Chained':
+              this.executePreparationsNestedConditions(configCondition, condicionWrapper);
+              break;
+            default:
+              break;
+          }
         });
       }
     });
@@ -113,11 +261,12 @@ export class ConditionExcutionerService {
     let keysUsuario = await this.keysService.returnKeysByUserID(condicionMongoDb.user);
     let keyUsuarioObtenida = BadgerUtils.busquedaKeysValida(keysUsuario, condicionMongoDb.generalConfig.exchange);
     if (keyUsuarioObtenida) {
-      await this.closeTrades(configCondition.id, condicionMongoDb.user, keyUsuarioObtenida);
+      console.log('executing exit');
+      // await this.closeTrades(configCondition.id, condicionMongoDb.user, keyUsuarioObtenida);
     }
   }
 
-  public prepareToExecuteOrder(subCondicion: FullConditionsModel, wrapperCondiciones: ConditionPack, emisorRespuesta: Observer<any>) {
+  public prepareToExecuteOrder(subCondicion: FullConditionsModel, wrapperCondiciones: ConditionPack, emisorRespuesta?: Observer<any>) {
     this.keysService.returnKeysByUserID(wrapperCondiciones.user).then(keysDelUser => {
       let keyUsuarioObtenida = BadgerUtils.busquedaKeysValida(keysDelUser, wrapperCondiciones.generalConfig.exchange);
       if (keyUsuarioObtenida) {
@@ -133,16 +282,17 @@ export class ConditionExcutionerService {
           );
 
           if (futureAssetInfo) {
-            this.tryToExecuteOrder(
+            /*this.tryToExecuteOrder(
               futureAssetInfo,
               ultimoPrecioAsset,
               cantidadEnTetherDelUsuario,
               keyUsuarioObtenida,
               wrapperCondiciones,
               subCondicion,
-            );
+            );*/
+            console.log('executing order');
           } else {
-            emisorRespuesta.next([futureAssetInfo]);
+            if (emisorRespuesta) emisorRespuesta.next([futureAssetInfo]);
           }
         });
       } else {
@@ -209,13 +359,13 @@ export class ConditionExcutionerService {
     let cumplimientoUltimoRegistro = this.conditionService.detectIfConditionIsAccomplishedWithSingleEntry(
       configCondition.enter.activateWhen,
       configCondition.enter.value,
-      historicDataAndTechnical.extraData.technical[0][historicDataAndTechnical.extraData.technical.length - 2],
+      historicDataAndTechnical.extraData.technical[0][historicDataAndTechnical.extraData.technical[0].length - 2],
     );
-    //TODO INDICE 0 REVISAR
+    //TODO INDICE 0 REVISAR , TODO OKAY SI SOLO QUEREMOS 1 INDICADOR POR CONDICIN
     let cumplimientoPenultimoRegistro = this.conditionService.detectIfConditionIsAccomplishedWithSingleEntry(
       configCondition.enter.activateWhen,
       configCondition.enter.value,
-      historicDataAndTechnical.extraData.technical[0][historicDataAndTechnical.extraData.technical.length - 3],
+      historicDataAndTechnical.extraData.technical[0][historicDataAndTechnical.extraData.technical[0].length - 3],
     );
 
     return {
@@ -228,16 +378,21 @@ export class ConditionExcutionerService {
     configCondition: FullConditionsModel,
     historicDataAndTechnical: BacktestedConditionModel,
   ) {
-    let basedValueToexit =
-      configCondition.exit.typeExit == 'indicator'
-        ? historicDataAndTechnical.extraData.technical[historicDataAndTechnical.extraData.technical.length - 2]
-        : historicDataAndTechnical.extraData.historic[historicDataAndTechnical.extraData.historic.length - 2].close;
-    //TODO REVISAR INDICE 0
-    return this.conditionService.detectIfConditionIsAccomplishedWithSingleEntry(
-      configCondition.exit.closeWhen,
-      configCondition.exit.value,
-      basedValueToexit[0],
-    );
+    if (configCondition.exit) {
+      console.log(historicDataAndTechnical.extraData.technical);
+      let basedValueToexit =
+        configCondition.exit.typeExit == 'indicator'
+          ? historicDataAndTechnical.extraData.technical[0][historicDataAndTechnical.extraData.technical[0].length - 2]
+          : historicDataAndTechnical.extraData.historic[historicDataAndTechnical.extraData.historic.length - 2].close;
+      //TODO INDICE 0 REVISAR , TODO OKAY SI SOLO QUEREMOS 1 INDICADOR POR CONDICIN
+      return this.conditionService.detectIfConditionIsAccomplishedWithSingleEntry(
+        configCondition.exit.closeWhen,
+        configCondition.exit.value,
+        basedValueToexit[0],
+      );
+    } else {
+      return null;
+    }
   }
 
   public async inserTradeLog(data: FuturesOrderInfo, exchange: string, openPrice: number, openTime: number) {

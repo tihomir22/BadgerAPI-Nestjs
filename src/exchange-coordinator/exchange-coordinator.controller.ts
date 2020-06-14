@@ -22,6 +22,11 @@ export class ExchangeCoordinatorController {
     return this.exchangeCordinatorService.returnAccountInfoFromSpecificExchange(data);
   }
 
+  @Post('getFuturesAccountInfo')
+  getFuturesAccountInfo(@Body() data: PrivateRequestsKeysWithExchange) {
+    return this.exchangeCordinatorService.returnFuturesAccountInfoFromSpecificExchange(data);
+  }
+
   @Get('getAssets/:exchangeName')
   returnAssetsFromExchange(@Param('exchangeName') exchName) {
     return this.exchangeCordinatorService.returnAssetsFromSpecificExchange(exchName);

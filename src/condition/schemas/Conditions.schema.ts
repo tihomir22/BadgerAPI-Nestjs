@@ -30,6 +30,7 @@ export interface FullConditionsModel {
   enter: EnterConditionModel;
   exit: ExitConditionModel;
   indicatorConfig: Array<PaqueteIndicadorTecnico>;
+  isMainChainingNode:boolean;
 }
 
 export interface GeneralConfig {
