@@ -12,6 +12,11 @@ export class ExchangeCoordinatorController {
     return this.exchangeCordinatorService.fetchAllExchanges();
   }
 
+  @Get('getExchangeById/:exchangeName')
+  getExchangeById(@Param('exchangeName') exchangeName) {
+    return this.exchangeCordinatorService.getByID(exchangeName);
+  }
+
   @Put('addExchange')
   addExchange(@Body() newExchange: ExchangeInfo) {
     return this.exchangeCordinatorService.inserSomething(newExchange);

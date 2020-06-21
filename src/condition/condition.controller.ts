@@ -13,6 +13,11 @@ export class ConditionController {
     return this.conditionService.returnAll();
   }
 
+  @Get('getById/:id')
+  getById(@Param('id') id) {
+    return this.conditionService.returnById(id);
+  }
+
   @Post('addNew')
   addNewCondition(@Body() newCondition: ConditionPack) {
     return this.conditionService.guardarCondicion(newCondition);

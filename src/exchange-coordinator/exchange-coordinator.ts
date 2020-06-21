@@ -94,6 +94,10 @@ export class ExchangeCoordinatorService {
     return this.ExchangeInfoModel.find();
   }
 
+  public getByID(idExchange: string) {
+    return this.ExchangeInfoModel.find({ idExchange: idExchange });
+  }
+
   async inserSomething(exchange: ExchangeInfo): Promise<ExchangeInfo> {
     const createdExchange = new this.ExchangeInfoModel({
       name: exchange.name,
@@ -185,7 +189,7 @@ export class ExchangeCoordinatorService {
     }
   }
 
-  async devolverHistoricoDependendiendoDelEXCHANGE(generalConfig:GeneralConfig) {
+  async devolverHistoricoDependendiendoDelEXCHANGE(generalConfig: GeneralConfig) {
     switch (generalConfig.exchange.toLowerCase()) {
       case 'binance':
         return await this.binance.returnHistoric(
