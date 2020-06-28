@@ -1,5 +1,4 @@
 import { Injectable, HttpException, HttpService } from '@nestjs/common';
-import { PaqueteIndicadorTecnico } from '../models/PaqueteIndicadorTecnico';
 import { BinanceService } from '../binance/binance.service';
 import { Model } from 'mongoose';
 import { from, Observable, of, throwError } from 'rxjs';
@@ -7,11 +6,10 @@ import { map, find, filter, mergeMap, flatMap, catchError } from 'rxjs/operators
 import { InjectModel } from '@nestjs/mongoose';
 import { ExchangeInfo } from './schemas/ExchangeInfo.schema';
 
-import * as request from 'request';
 import { ExchangeConstants } from './constants/ExchangeConstants';
-import { PrivateRequestsKeysWithExchange, BaseBinanceModel } from 'src/models/PrivateRequestsModel';
 import { Account } from 'binance-api-node';
-import { GeneralConfig } from 'src/condition/schemas/Conditions.schema';
+import { PrivateRequestsKeysWithExchange, BaseBinanceModel } from '../models/PrivateRequestsModel';
+import { GeneralConfig } from '../condition/schemas/Conditions.schema';
 
 @Injectable()
 export class ExchangeCoordinatorService {

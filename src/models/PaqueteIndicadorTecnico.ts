@@ -1,4 +1,5 @@
 import { HistoricRegistry } from './HistoricRegistry';
+import { FullConditionsModel } from '../condition/schemas/Conditions.schema';
 
 export interface PaqueteIndicadorTecnico {
   indicatorParams: IndicatorParams;
@@ -20,6 +21,7 @@ export interface IndicatorParams {
 export interface BacktestedConditionModel {
   fulfilled: Array<FullfillmentModel>;
   extraData: ServerResponseIndicator;
+  conditionAssociated: FullConditionsModel;
 }
 
 export interface FullfillmentModel {

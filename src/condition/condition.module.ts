@@ -5,9 +5,9 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ConditionInfoSchema, executedTradePositionInfo } from './schemas/Conditions.schema';
 import { ExchangeCoordinatorModule } from '../exchange-coordinator/exchange-coordinator.module';
 import { TechnicalIndicatorsModule } from '../technical-indicators/technical-indicators.module';
-import { KeysModule } from 'src/keys/keys.module';
 import { ConditionExcutionerService } from './services/condition-excutioner/condition-excutioner.service';
-import { GeneralModule } from 'src/general/general.module';
+import { KeysModule } from '../keys/keys.module';
+import { GeneralModule } from '../general/general.module';
 
 @Module({
   controllers: [ConditionController],

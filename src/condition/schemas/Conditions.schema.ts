@@ -1,5 +1,5 @@
 import * as mongoose from 'mongoose';
-import { PaqueteIndicadorTecnico, HistoricParams } from 'src/models/PaqueteIndicadorTecnico';
+import { PaqueteIndicadorTecnico, HistoricParams } from '../../models/PaqueteIndicadorTecnico';
 
 export const executedTradePositionInfo = new mongoose.Schema({
   trade: {},
@@ -30,7 +30,7 @@ export interface FullConditionsModel {
   enter: EnterConditionModel;
   exit: ExitConditionModel;
   indicatorConfig: Array<PaqueteIndicadorTecnico>;
-  isMainChainingNode:boolean;
+  isMainChainingNode: boolean;
 }
 
 export interface GeneralConfig {
@@ -42,6 +42,7 @@ export interface EnterConditionModel {
   activateWhen: 'below' | 'above' | 'equals';
   doWhat: string;
   value: number;
+  dynamicValue: boolean;
 }
 
 export interface ExitConditionModel {

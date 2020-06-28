@@ -1,8 +1,27 @@
-import { UserKey } from 'src/keys/schemas/UserKeys.schema';
+import { FullConditionsModel } from "../condition/schemas/Conditions.schema";
+import { UserKey } from "../keys/schemas/UserKeys.schema";
 
 export class BadgerUtils {
   public static BINANCE_FUTURES_ENDPOINT = 'https://fapi.binance.com';
   //public static BINANCE_FUTURES_ENDPOINT = 'https://testnet.binancefuture.com';
+
+  public static orderByMainChainingNode(a: FullConditionsModel, b: FullConditionsModel) {
+    if (a.isMainChainingNode && !b.isMainChainingNode) {
+      return -1;
+    }
+    if (!a.isMainChainingNode && b.isMainChainingNode) {
+      return 1;
+    }
+    return 0;
+  }
+
+  public static generateArrayWithSpecificLenght(length: number, value: any) {
+    let res = [];
+    for (let i = 0; i < length; i++) {
+      res.push(value);
+    }
+    return res;
+  }
 
   public static isValidUserKey(key: any) {
     let keyMapped: UserKey = key;

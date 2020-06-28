@@ -1,6 +1,5 @@
 import { Injectable, NestMiddleware, HttpException } from '@nestjs/common';
-import { PaqueteIndicadorTecnico } from '../models/PaqueteIndicadorTecnico';
-import { ConditionPack } from 'src/condition/schemas/Conditions.schema';
+import { ConditionPack } from '../condition/schemas/Conditions.schema';
 
 @Injectable()
 export class RedireccionadorMiddleware implements NestMiddleware {

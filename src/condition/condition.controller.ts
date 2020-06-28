@@ -18,9 +18,19 @@ export class ConditionController {
     return this.conditionService.returnById(id);
   }
 
+  @Delete('getById/:id')
+  deletetById(@Param('id') id) {
+    return this.conditionService.deleteById(id);
+  }
+
   @Post('addNew')
   addNewCondition(@Body() newCondition: ConditionPack) {
-    return this.conditionService.guardarCondicion(newCondition);
+    return this.conditionService.newWrapper(newCondition);
+  }
+
+  @Post('update')
+  updateConditions(@Body() savingWrapper: ConditionPack) {
+    return this.conditionService.saveWrapper(savingWrapper);
   }
 
   @Post('backtest')

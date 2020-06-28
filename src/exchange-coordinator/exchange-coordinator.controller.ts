@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Res, HttpException, Put, Body, Header, Post } from '@nestjs/common';
 import { ExchangeCoordinatorService } from './exchange-coordinator';
 import { ExchangeInfo } from './schemas/ExchangeInfo.schema';
-import { PrivateRequestsKeysWithExchange } from 'src/models/PrivateRequestsModel';
+import { PrivateRequestsKeysWithExchange } from '../models/PrivateRequestsModel';
 
 @Controller('exchange-coordinator')
 export class ExchangeCoordinatorController {

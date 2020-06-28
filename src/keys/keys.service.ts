@@ -2,10 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { UserKey } from './schemas/UserKeys.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { BadgerUtils } from 'src/static/Utils';
 import { from, forkJoin, Observable, empty, of } from 'rxjs';
-import { BinanceService } from 'src/binance/binance.service';
-import { catchError } from 'rxjs/operators';
+import { BinanceService } from '../binance/binance.service';
+import { BadgerUtils } from '../static/Utils';
 
 @Injectable()
 export class KeysService {

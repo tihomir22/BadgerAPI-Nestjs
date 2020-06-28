@@ -3,7 +3,7 @@ import { KeysController } from './keys.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UserKeysSchema } from './schemas/UserKeys.schema';
 import { KeysService } from './keys.service';
-import { BinanceModule } from 'src/binance/binance.module';
+import { BinanceModule } from '../binance/binance.module';
 
 @Module({
   controllers: [KeysController],
