@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { UserKeysSchema } from './schemas/UserKeys.schema';
 import { KeysService } from './keys.service';
 import { BinanceModule } from '../binance/binance.module';
+import { CryptoService } from '../crypto/crypto/crypto.service';
 
 @Module({
   controllers: [KeysController],
@@ -17,7 +18,7 @@ import { BinanceModule } from '../binance/binance.module';
       },
     ]),
   ],
-  providers: [KeysService],
+  providers: [KeysService,CryptoService],
   exports: [KeysService],
 })
 export class KeysModule {}

@@ -1,14 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { UserKey } from './schemas/UserKeys.schema';
+import { UserKey, JustKeys } from './schemas/UserKeys.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { from, forkJoin, Observable, empty, of } from 'rxjs';
 import { BinanceService } from '../binance/binance.service';
 import { BadgerUtils } from '../static/Utils';
+import { CryptoService } from '../crypto/crypto/crypto.service';
 
 @Injectable()
 export class KeysService {
-  constructor(@InjectModel('UserKey') private userKeyModel: Model<UserKey>, private binance: BinanceService) {}
+  constructor(
+    @InjectModel('UserKey') private userKeyModel: Model<UserKey>,
+    private binance: BinanceService,
+    private crypto: CryptoService,
+  ) {}
 
   async addNewKey(key: UserKey) {
     const createKey = new this.userKeyModel({
@@ -37,5 +42,11 @@ export class KeysService {
     let userKeys: Array<UserKey> = await this.userKeyModel.find({ user: user });
     let observableKeys = userKeys.filter(entry => BadgerUtils.isValidUserKey(entry));
     return observableKeys;
+  }
+
+  public returnDecrypted(justKeyS: JustKeys) {
+    justKeyS.privateK = this.crypto.decryptTXT(justKeyS.privateK);
+    justKeyS.publicK = this.crypto.decryptTXT(justKeyS.publicK);
+    return justKeyS;
   }
 }

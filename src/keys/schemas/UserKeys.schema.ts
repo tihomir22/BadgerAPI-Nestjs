@@ -14,3 +14,8 @@ export interface UserKey extends mongoose.Document {
   publicK: string;
   privateK: string;
 }
+
+export interface JustKeys {
+  publicK: string;
+  privateK: string;
+}

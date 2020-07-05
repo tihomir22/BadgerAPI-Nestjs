@@ -891,6 +891,7 @@
   "rsi": {
     "name": "rsi",
     "hide": false,
+    "chartType": "bar",
     "full_name": "Relative Strength Index",
     "type": "indicator",
     "inputs": 1,
@@ -994,6 +995,7 @@
   "stochrsi": {
     "name": "stochrsi",
     "hide": false,
+    "chartType": "bar",
     "full_name": "Stochastic RSI",
     "type": "indicator",
     "inputs": 1,
@@ -1342,7 +1344,8 @@
     "outputs": 1,
     "input_names": ["real"],
     "option_names": ["period"],
-    "output_names": ["zlema"], "seriesConfig": {
+    "output_names": ["zlema"],
+    "seriesConfig": {
       "smooth": true,
       "showSymbol": false,
       "lineStyle": {

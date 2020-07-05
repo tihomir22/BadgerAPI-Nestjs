@@ -1,5 +1,5 @@
 import { Controller, Post, Body, Get, Param, Delete } from '@nestjs/common';
-import { UserKey } from './schemas/UserKeys.schema';
+import { UserKey, JustKeys } from './schemas/UserKeys.schema';
 import { KeysService } from './keys.service';
 
 @Controller('keys')
@@ -27,5 +27,9 @@ export class KeysController {
 
   @Get('lookForValidKey/:user') lookForValidKey(@Param('user') user: string) {
     return this.keyService.lookForValidKey(user);
+  }
+
+  @Post('decryptKeys') decryptKeys(@Body() keys: JustKeys) {
+    return this.keyService.returnDecrypted(keys);
   }
 }

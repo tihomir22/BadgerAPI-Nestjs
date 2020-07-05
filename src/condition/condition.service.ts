@@ -141,75 +141,28 @@ export class ConditionService {
       });
       indicatorData = await forkJoin(indicatorDataPromises).toPromise();
       indicatorData.forEach((backtestedObj, indexBacktestedObj) => {
-        let [condicionRes, indicatorDataRes] = this.detectIfConditionAccomplished(
-          wrapper.conditionConfig[indexBacktestedObj],
-          backtestedObj,
-        );
-        wrapper.conditionConfig[indexBacktestedObj] = condicionRes;
-        backtestedObj = indicatorDataRes;
+        if (wrapper.conditionConfig[indexBacktestedObj].enter && wrapper.conditionConfig[indexBacktestedObj].enter.activateWhen) {
+          let [condicionRes, backtestingModel] = this.detectIfConditionAccomplished(
+            wrapper.conditionConfig[indexBacktestedObj],
+            backtestedObj,
+          );
+          wrapper.conditionConfig[indexBacktestedObj] = condicionRes;
+          backtestedObj = backtestingModel;
+        }
 
-        let [condicionRes2, indicatorDataRes2] = this.detectIfAccomplishedConditionHasEnded(
-          wrapper.conditionConfig[indexBacktestedObj],
-          backtestedObj,
-        );
-        wrapper.conditionConfig[indexBacktestedObj] = condicionRes2;
-        backtestedObj = indicatorDataRes2;
+        if (wrapper.conditionConfig[indexBacktestedObj].exit && wrapper.conditionConfig[indexBacktestedObj].exit.closeWhen) {
+          let [condicionRes2, backtestingModel2] = this.detectIfAccomplishedConditionHasEnded(
+            wrapper.conditionConfig[indexBacktestedObj],
+            backtestedObj,
+          );
+          wrapper.conditionConfig[indexBacktestedObj] = condicionRes2;
+          backtestedObj = backtestingModel2;
+        }
       });
-      if (indicatorData.length > 1) {
-        return this.mergeBacktestObjArray(
-          indicatorData,
-          indicatorData.every(entry => entry.conditionAssociated.type == 'Chained'),
-        );
-      } else {
-        return indicatorData;
-      }
+
+      return indicatorData;
     } else {
       throw new HttpException('Incorrect condition configuration!', 404);
-    }
-  }
-
-  private mergeBacktestObjArray(backtestedObjArray: Array<BacktestedConditionModel>, allChained: boolean) {
-    let res: Array<FullfillmentModel> = BadgerUtils.generateArrayWithSpecificLenght(backtestedObjArray[0].fulfilled.length, null);
-    let procesedEntries: Array<BacktestedConditionModel> = [];
-    if (allChained) {
-      backtestedObjArray
-        .sort((a, b) => BadgerUtils.orderByMainChainingNode(a.conditionAssociated, b.conditionAssociated))
-        .forEach(condicion => {
-          condicion.conditionAssociated.chainedTo.forEach(idRelacion => {
-            let nodoRelacionado = backtestedObjArray.find(
-              entry => entry.conditionAssociated.id === idRelacion && !procesedEntries.find(outEntry => outEntry != entry),
-            );
-            if (nodoRelacionado) {
-              procesedEntries.push(nodoRelacionado);
-              condicion.fulfilled.forEach((fullFillmentData, indexFull) => {
-                switch (nodoRelacionado.conditionAssociated.chainingType.toUpperCase()) {
-                  case 'AND':
-                    // console.log([fullFillmentData, nodoRelacionado.fulfilled[indexFull]]);
-                    if (fullFillmentData != null && nodoRelacionado.fulfilled[indexFull] != null) {
-                      res[indexFull] = fullFillmentData;
-                    } else {
-                      res[indexFull] = null;
-                    }
-                    break;
-                  case 'OR':
-                    if (fullFillmentData != null || nodoRelacionado.fulfilled[indexFull] != null) {
-                      res[indexFull] = fullFillmentData != null ? fullFillmentData : nodoRelacionado.fulfilled[indexFull];
-                    } else {
-                      res[indexFull] = null;
-                    }
-                    break;
-
-                  default:
-                    break;
-                }
-              });
-            }
-          });
-        });
-      return res;
-    } else {
-      console.log('not implemented yet');
-      return allChained;
     }
   }
 
@@ -234,85 +187,83 @@ export class ConditionService {
   }
 
   private detectIfAccomplishedConditionHasEnded(condicion: FullConditionsModel, technicalData: BacktestedConditionModel): Array<any> {
-    if (condicion.exit && condicion.exit.closeWhen && condicion.exit.value) {
-      technicalData.extraData.technical.forEach(technicalEntryData => {
-        for (let i = 0; i < technicalEntryData.length; i++) {
-          if (technicalEntryData[i] != null) {
-            switch (condicion.exit.closeWhen) {
-              case 'above':
-                if (condicion.exit.typeExit == 'indicator') {
-                  if (technicalEntryData[i] >= condicion.exit.value) {
-                    this.closeAllEntriesBeforeThisIndex(
-                      i,
-                      technicalData,
-                      new Date(technicalData.extraData.historic[i].closeTime),
-                      technicalEntryData[i],
-                      technicalData.extraData.historic[i].close,
-                    );
-                  }
-                } else if (condicion.exit.typeExit == 'price') {
-                  if (technicalData.extraData.historic[i].close >= condicion.exit.value) {
-                    this.closeAllEntriesBeforeThisIndex(
-                      i,
-                      technicalData,
-                      new Date(technicalData.extraData.historic[i].closeTime),
-                      technicalEntryData[i],
-                      technicalData.extraData.historic[i].close,
-                    );
-                  }
+    technicalData.extraData.technical.forEach(technicalEntryData => {
+      for (let i = 0; i < technicalEntryData.length; i++) {
+        if (technicalEntryData[i] != null) {
+          switch (condicion.exit.closeWhen) {
+            case 'above':
+              if (condicion.exit.typeExit == 'indicator') {
+                if (technicalEntryData[i] >= condicion.exit.value) {
+                  this.closeAllEntriesBeforeThisIndex(
+                    i,
+                    technicalData,
+                    new Date(technicalData.extraData.historic[i].closeTime),
+                    technicalEntryData[i],
+                    technicalData.extraData.historic[i].close,
+                  );
                 }
-                break;
+              } else if (condicion.exit.typeExit == 'price') {
+                if (technicalData.extraData.historic[i].close >= condicion.exit.value) {
+                  this.closeAllEntriesBeforeThisIndex(
+                    i,
+                    technicalData,
+                    new Date(technicalData.extraData.historic[i].closeTime),
+                    technicalEntryData[i],
+                    technicalData.extraData.historic[i].close,
+                  );
+                }
+              }
+              break;
 
-              case 'below':
-                if (condicion.exit.typeExit == 'indicator') {
-                  if (technicalEntryData[i] <= condicion.exit.value) {
-                    this.closeAllEntriesBeforeThisIndex(
-                      i,
-                      technicalData,
-                      new Date(technicalData.extraData.historic[i].closeTime),
-                      technicalEntryData[i],
-                      technicalData.extraData.historic[i].close,
-                    );
-                  }
-                } else if (condicion.exit.typeExit == 'price') {
-                  if (technicalData.extraData.historic[i].close <= condicion.exit.value) {
-                    this.closeAllEntriesBeforeThisIndex(
-                      i,
-                      technicalData,
-                      new Date(technicalData.extraData.historic[i].closeTime),
-                      technicalEntryData[i],
-                      technicalData.extraData.historic[i].close,
-                    );
-                  }
+            case 'below':
+              if (condicion.exit.typeExit == 'indicator') {
+                if (technicalEntryData[i] <= condicion.exit.value) {
+                  this.closeAllEntriesBeforeThisIndex(
+                    i,
+                    technicalData,
+                    new Date(technicalData.extraData.historic[i].closeTime),
+                    technicalEntryData[i],
+                    technicalData.extraData.historic[i].close,
+                  );
                 }
-              case 'equals':
-                if (condicion.exit.typeExit == 'indicator') {
-                  if (technicalEntryData[i] === condicion.exit.value) {
-                    this.closeAllEntriesBeforeThisIndex(
-                      i,
-                      technicalData,
-                      new Date(technicalData.extraData.historic[i].closeTime),
-                      technicalEntryData[i],
-                      technicalData.extraData.historic[i].close,
-                    );
-                  }
-                } else if (condicion.exit.typeExit == 'price') {
-                  if (technicalData.extraData.historic[i].close === condicion.exit.value) {
-                    this.closeAllEntriesBeforeThisIndex(
-                      i,
-                      technicalData,
-                      new Date(technicalData.extraData.historic[i].closeTime),
-                      technicalEntryData[i],
-                      technicalData.extraData.historic[i].close,
-                    );
-                  }
+              } else if (condicion.exit.typeExit == 'price') {
+                if (technicalData.extraData.historic[i].close <= condicion.exit.value) {
+                  this.closeAllEntriesBeforeThisIndex(
+                    i,
+                    technicalData,
+                    new Date(technicalData.extraData.historic[i].closeTime),
+                    technicalEntryData[i],
+                    technicalData.extraData.historic[i].close,
+                  );
                 }
-                break;
-            }
+              }
+            case 'equals':
+              if (condicion.exit.typeExit == 'indicator') {
+                if (technicalEntryData[i] === condicion.exit.value) {
+                  this.closeAllEntriesBeforeThisIndex(
+                    i,
+                    technicalData,
+                    new Date(technicalData.extraData.historic[i].closeTime),
+                    technicalEntryData[i],
+                    technicalData.extraData.historic[i].close,
+                  );
+                }
+              } else if (condicion.exit.typeExit == 'price') {
+                if (technicalData.extraData.historic[i].close === condicion.exit.value) {
+                  this.closeAllEntriesBeforeThisIndex(
+                    i,
+                    technicalData,
+                    new Date(technicalData.extraData.historic[i].closeTime),
+                    technicalEntryData[i],
+                    technicalData.extraData.historic[i].close,
+                  );
+                }
+              }
+              break;
           }
         }
-      });
-    }
+      }
+    });
     return [condicion, technicalData];
   }
 
@@ -390,14 +341,14 @@ export class ConditionService {
     };
   }
 
-  private detectIfConditionAccomplished(condicion: FullConditionsModel, technicalData: BacktestedConditionModel): Array<any> {
+  private detectIfConditionAccomplished(condicion: FullConditionsModel, backtestingModel: BacktestedConditionModel): Array<any> {
     let detectadoCumplimiento = false;
     let seEstaCumpliendoLaCondicion = false;
     //Por cada condicion...
-    technicalData.extraData.technical.forEach(technicalArrayOfData => {
+    backtestingModel.extraData.technical.forEach(technicalArrayOfData => {
       for (let i = 0; i < technicalArrayOfData.length; i++) {
         const registroTecnico = technicalArrayOfData[i];
-        const registroHistorico = technicalData.extraData.historic[i].close;
+        const registroHistorico = backtestingModel.extraData.historic[i].close;
         if (registroTecnico != null) {
           detectadoCumplimiento = this.detectIfConditionIsAccomplishedWithSingleEntry(
             condicion.enter.activateWhen,
@@ -415,26 +366,25 @@ export class ConditionService {
             seEstaCumpliendoLaCondicion = resdetectIfConditionAccomplishmentEnded[1];
           }
           if (detectadoCumplimiento && registroTecnico != null) {
-            technicalData.fulfilled[i] = {
+            backtestingModel.fulfilled[i] = {
               id: +new Date() + 'CDN',
-              priceEnter: technicalData.extraData.historic[i].close,
+              priceEnter: backtestingModel.extraData.historic[i].close,
               indicatorEnter: registroTecnico,
-              dateEnter: new Date(technicalData.extraData.historic[i].openTime),
+              dateEnter: new Date(backtestingModel.extraData.historic[i].openTime),
               priceExit: null,
               indicatorExit: null,
               dateExit: null,
             };
           } else {
-            technicalData.fulfilled[i] = null;
+            backtestingModel.fulfilled[i] = null;
           }
           detectadoCumplimiento = false;
         } else {
-          technicalData.fulfilled[i] = null;
+          backtestingModel.fulfilled[i] = null;
         }
       }
     });
-    //console.log([condicion, technicalData]);
-    return [condicion, technicalData];
+    return [condicion, backtestingModel];
   }
 
   private detectIfConditionAccomplishmentEnded(detectadoCumplimiento: boolean, seEstaCumpliendoLaCondicion: boolean): Array<any> {
