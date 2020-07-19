@@ -3,34 +3,39 @@ import { ConditionPack, ChangeStateModel, ChangeFundingAsset, DeleteConditionsBy
 import { ConditionService } from './condition.service';
 import { forkJoin, Observable } from 'rxjs';
 import { ConditionExcutionerService } from './services/condition-excutioner/condition-excutioner.service';
+import { ConditionRestService } from './services/condition-excutioner/condition-rest.service';
 
 @Controller('condition')
 export class ConditionController {
-  constructor(private conditionService: ConditionService, private conditionExecutioner: ConditionExcutionerService) {}
+  constructor(
+    private conditionREST: ConditionRestService,
+    private conditionService: ConditionService,
+    private conditionExecutioner: ConditionExcutionerService,
+  ) {}
 
   @Get('getAll')
   getAllConditions() {
-    return this.conditionService.returnAll();
+    return this.conditionREST.returnAll();
   }
 
   @Get('getById/:id')
   getById(@Param('id') id) {
-    return this.conditionService.returnById(id);
+    return this.conditionREST.returnById(id);
   }
 
   @Delete('getById/:id')
   deletetById(@Param('id') id) {
-    return this.conditionService.deleteById(id);
+    return this.conditionREST.deleteById(id);
   }
 
   @Post('addNew')
   addNewCondition(@Body() newCondition: ConditionPack) {
-    return this.conditionService.newWrapper(newCondition);
+    return this.conditionREST.newWrapper(newCondition);
   }
 
   @Post('update')
   updateConditions(@Body() savingWrapper: ConditionPack) {
-    return this.conditionService.saveWrapper(savingWrapper);
+    return this.conditionREST.saveWrapper(savingWrapper);
   }
 
   @Post('backtest')
@@ -40,22 +45,22 @@ export class ConditionController {
 
   @Get('getByUser/:id')
   getConditionsByUser(@Param('id') id) {
-    return this.conditionService.recoverAllConditionsByUserId(id);
+    return this.conditionREST.recoverAllConditionsByUserId(id);
   }
 
   @Post('changeState')
   changeState(@Body() body: ChangeStateModel) {
-    return this.conditionService.changeState(body.id, body.state);
+    return this.conditionREST.changeState(body.id, body.state);
   }
 
   @Post('deleteConditionsById')
   deleteConditionsById(@Body() deleteContionsModel: DeleteConditionsById) {
-    return this.conditionService.deleteConditionsById(deleteContionsModel);
+    return this.conditionREST.deleteConditionsById(deleteContionsModel);
   }
 
   @Post('testOperation')
   test(@Res() res) {
-    this.conditionService.returnConditionsByTimeFrame('1h').then(data => {
+    this.conditionREST.returnConditionsByTimeFrame('1h').then(data => {
       new Observable(observer => {
         this.conditionExecutioner.executePreparations(data, observer);
       }).subscribe(data => {

@@ -8,6 +8,7 @@ import { TechnicalIndicatorsModule } from '../technical-indicators/technical-ind
 import { ConditionExcutionerService } from './services/condition-excutioner/condition-excutioner.service';
 import { KeysModule } from '../keys/keys.module';
 import { GeneralModule } from '../general/general.module';
+import { ConditionRestService } from './services/condition-excutioner/condition-rest.service';
 
 @Module({
   controllers: [ConditionController],
@@ -29,7 +30,7 @@ import { GeneralModule } from '../general/general.module';
       },
     ]),
   ],
-  providers: [ConditionService, ConditionExcutionerService],
-  exports: [ConditionService, ConditionExcutionerService],
+  providers: [ConditionService, ConditionExcutionerService, ConditionRestService],
+  exports: [ConditionService, ConditionExcutionerService, ConditionRestService],
 })
 export class ConditionModule {}

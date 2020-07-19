@@ -14,15 +14,9 @@ import { WrapperSchemaFuturesOrderInfo, FuturesAccountInfo, FuturesOrderInfo } f
 import { UserKey } from '../../../keys/schemas/UserKeys.schema';
 import { ConditionPack, FullConditionsModel } from '../../schemas/Conditions.schema';
 import { BadgerUtils } from '../../../static/Utils';
-export interface UltimoPenultimoCumplimientoRegistro {
-  ultimo: boolean;
-  penultimo: boolean;
-}
+import { ConditionRestService } from './condition-rest.service';
+import { EstadoEntradaSalidaCondicionEncadenada } from '../../../models/CumplimientoRegistrosModel';
 
-export interface EstadoEntradaSalidaCondicionEncadenada {
-  entrada: boolean;
-  salida: boolean;
-}
 
 @Injectable()
 export class ConditionExcutionerService {
@@ -32,6 +26,7 @@ export class ConditionExcutionerService {
     private keysService: KeysService,
     private exchangeCoordinator: ExchangeCoordinatorService,
     private generalService: GeneralService,
+    private conditionREST: ConditionRestService,
     @InjectModel('ConditionLogs') private conditionLogs: Model<WrapperSchemaFuturesOrderInfo>,
   ) {}
 
@@ -84,7 +79,7 @@ export class ConditionExcutionerService {
 
   private async executePreparationsBasicCondition(configCondition: FullConditionsModel, conditionPack: ConditionPack) {
     if (configCondition.state == 'started') {
-      let historicDataAndTechnical = await this.conditionService.getLatestTechnicalAndHistoricDataFromCondition(
+      let historicDataAndTechnical = await this.conditionREST.getLatestTechnicalAndHistoricDataFromCondition(
         configCondition,
         conditionPack.generalConfig,
       );
@@ -128,7 +123,7 @@ export class ConditionExcutionerService {
           );
         }).subscribe((data: EstadoEntradaSalidaCondicionEncadenada) => {
           //TODO comprobar que no se ejecuten duplicados
-          console.log('whoop', data);
+          console.log('whoop', data); 
           if (data.entrada) {
             this.prepareToExecuteOrder(mainNodeCondition, wrapperCondiciones, null);
           } else if (data.salida) {

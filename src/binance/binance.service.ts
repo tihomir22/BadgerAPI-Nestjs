@@ -1,5 +1,5 @@
 import { Injectable, HttpException, HttpService } from '@nestjs/common';
-import Binance, { CandleChartInterval } from 'binance-api-node';
+import Binance, { CandleChartInterval, Symbol } from 'binance-api-node';
 import {
   PrivateRequestsKeys,
   PrivateRequestsKeysWithSymbol,
@@ -160,16 +160,7 @@ export class BinanceService {
   async returnAllAssets() {
     let publicClient = Binance();
     try {
-      return (await publicClient.exchangeInfo()).symbols
-        .filter(symbol => symbol.status != 'BREAK')
-        .map(simbolo => {
-          return {
-            symbol: simbolo.symbol,
-            estado: simbolo.status,
-            parBase: simbolo.baseAsset,
-            parContra: simbolo.quoteAsset,
-          };
-        });
+      return this.filterBrokenAssetsAndMap((await publicClient.exchangeInfo()).symbols);
     } catch (error) {
       this.throwBinanceError(error);
     }
@@ -178,16 +169,7 @@ export class BinanceService {
   async returnAllFutureAssets() {
     let publicClient = Binance();
     try {
-      return (await publicClient.futuresExchangeInfo()).symbols
-        .filter(symbol => symbol.status != 'BREAK')
-        .map(simbolo => {
-          return {
-            symbol: simbolo.symbol,
-            estado: simbolo.status,
-            parBase: simbolo.baseAsset,
-            parContra: simbolo.quoteAsset,
-          };
-        });
+      return this.filterBrokenAssetsAndMap((await publicClient.futuresExchangeInfo()).symbols);
     } catch (error) {
       this.throwBinanceError(error);
     }
@@ -215,5 +197,18 @@ export class BinanceService {
       'Binance error: ' + error + ' more info : https://github.com/binance-exchange/binance-official-api-docs/blob/master/errors.md',
       404,
     );
+  }
+
+  private filterBrokenAssetsAndMap(assets: Array<Symbol>) {
+    return assets
+      .filter(symbol => symbol.status != 'BREAK')
+      .map(symbolFiltered => {
+        return {
+          symbol: symbolFiltered.symbol,
+          estado: symbolFiltered.status,
+          parBase: symbolFiltered.baseAsset,
+          parContra: symbolFiltered.quoteAsset,
+        };
+      });
   }
 }

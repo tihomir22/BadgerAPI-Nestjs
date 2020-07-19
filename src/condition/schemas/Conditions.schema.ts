@@ -46,9 +46,12 @@ export interface EnterConditionModel {
 }
 
 export interface ExitConditionModel {
-  typeExit: 'indicator' | 'price';
-  closeWhen: 'below' | 'above' | 'equals';
-  value: number;
+  typeExit: 'condition' | 'static';
+  valueBasedOn: 'indicator' | 'price';
+  value: any;
+  closeWhen?: 'below' | 'above' | 'equals';
+  takeProfitPercentage?: number;
+  stopLossPercentage?: number;
 }
 
 export interface ChangeStateModel {
