@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { UserKey, JustKeys } from './schemas/UserKeys.schema';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Connection } from 'mongoose';
 import { from, forkJoin, Observable, empty, of } from 'rxjs';
 import { BinanceService } from '../binance/binance.service';
 import { BadgerUtils } from '../static/Utils';
 import { CryptoService } from '../crypto/crypto/crypto.service';
+import { assert } from 'console';
 
 @Injectable()
 export class KeysService {
@@ -22,12 +23,18 @@ export class KeysService {
       exchangeID: key.exchangeID,
       publicK: key.publicK,
       privateK: key.privateK,
+      isTestnet: key.isTestnet,
+      defaultKey: key.defaultKey,
     });
     return await createKey.save();
   }
 
   async updateKey(key: UserKey) {
-    return await this.userKeyModel.findByIdAndUpdate(key._id, key);
+    if (key.defaultKey) {
+      await this.userKeyModel.updateMany({ defaultKey: true }, { defaultKey: false });
+    }
+    let modeloActualizado = await this.userKeyModel.findByIdAndUpdate(key._id, key);
+    return modeloActualizado;
   }
 
   async returnKeysByUserID(userId: any) {

@@ -16,4 +16,8 @@ export class AppController {
       closeTime: Date.now(),
     });
   }
+
+  @Get('/') hello() {
+    return 'hello!';
+  }
 }

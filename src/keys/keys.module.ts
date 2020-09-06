@@ -5,6 +5,7 @@ import { UserKeysSchema } from './schemas/UserKeys.schema';
 import { KeysService } from './keys.service';
 import { BinanceModule } from '../binance/binance.module';
 import { CryptoService } from '../crypto/crypto/crypto.service';
+import { Connection } from 'mongoose';
 
 @Module({
   controllers: [KeysController],
@@ -18,7 +19,7 @@ import { CryptoService } from '../crypto/crypto/crypto.service';
       },
     ]),
   ],
-  providers: [KeysService,CryptoService],
+  providers: [KeysService, CryptoService, Connection],
   exports: [KeysService],
 })
 export class KeysModule {}

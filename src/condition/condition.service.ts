@@ -294,39 +294,31 @@ export class ConditionService {
     return [detectadoCumplimiento, seEstaCumpliendoLaCondicion];
   }
 
-  public recursivelyCheckIfChainedConditionsAreMet(
+  public async recursivelyCheckIfChainedConditionsAreMet(
     mainNodeCondition: FullConditionsModel,
-    allConditions: Array<FullConditionsModel>,
-    generalData: GeneralConfig,
+    wrapper: ConditionPack,
     conditionValidationStatus: EstadoEntradaSalidaCondicionEncadenada,
-    numeroCola: number,
-    numeroColaProcesados: number,
     observer: Observer<EstadoEntradaSalidaCondicionEncadenada>,
   ) {
-    mainNodeCondition.chainedTo.forEach(async (chainedConditionId, index) => {
-      let nodoHijoEncontrado = allConditions.find(entry => entry.id == chainedConditionId && entry.type == 'Chained');
+    for (const valor of mainNodeCondition.chainedTo) {
+      let nodoHijoEncontrado = wrapper.conditionConfig.find(entry => entry.id == valor && entry.type == 'Chained');
       if (nodoHijoEncontrado && conditionValidationStatus.entrada) {
-        numeroCola++;
         conditionValidationStatus = await this.compareWithChildNode(
           mainNodeCondition,
           nodoHijoEncontrado,
-          generalData,
+          wrapper.generalConfig,
           conditionValidationStatus,
         );
-        numeroColaProcesados++;
+        nodoHijoEncontrado.chainedTo.splice(
+          nodoHijoEncontrado.chainedTo.findIndex(entry => entry == mainNodeCondition.id),
+          1,
+        );
         if (conditionValidationStatus.entrada && nodoHijoEncontrado.chainedTo && nodoHijoEncontrado.chainedTo.length > 0) {
-          this.recursivelyCheckIfChainedConditionsAreMet(
-            nodoHijoEncontrado,
-            allConditions,
-            generalData,
-            conditionValidationStatus,
-            numeroCola,
-            numeroColaProcesados,
-            observer,
-          );
-        } else if (numeroCola === numeroColaProcesados && index == 0) observer.next(conditionValidationStatus);
-      } else if (numeroCola === numeroColaProcesados && index == 0) observer.next(conditionValidationStatus);
-    });
+          await this.recursivelyCheckIfChainedConditionsAreMet(nodoHijoEncontrado, wrapper, conditionValidationStatus, observer);
+        }
+      }
+    }
+    observer.next(conditionValidationStatus);
   }
 
   private async compareWithChildNode(
@@ -346,16 +338,13 @@ export class ConditionService {
     let cumplimientoSalidaNodeB = this.comprobacionCumplimientoSalidaSoloUltimoRegistro(nodoHijoEncontrado, childNodeTechnicalData);
     if (cumplimientoRegistrosNodeA == null) cumplimientoSalidaNodeA = latestStatus.salida;
     if (cumplimientoSalidaNodeB == null) cumplimientoSalidaNodeB = latestStatus.salida;
-    console.log(
+    /* console.log(
       mainNodeTechnicalData.extraData.technical[0].slice(Math.max(mainNodeTechnicalData.extraData.technical[0].length - 5, 0)),
       childNodeTechnicalData.extraData.technical[0].slice(Math.max(childNodeTechnicalData.extraData.technical[0].length - 5, 0)),
     );
     console.log(cumplimientoRegistrosNodeA, cumplimientoRegistrosNodeB);
+*/
 
-    nodoHijoEncontrado.chainedTo.splice(
-      nodoHijoEncontrado.chainedTo.findIndex(entry => entry == mainNodeCondition.id),
-      1,
-    );
     return {
       entrada: this.seCumpleCondicionEncadenada(cumplimientoRegistrosNodeA, cumplimientoRegistrosNodeB, nodoHijoEncontrado.chainingType),
       salida: this.seCumpleSalidaEncadenada(cumplimientoSalidaNodeA, cumplimientoSalidaNodeB, nodoHijoEncontrado.chainingType),
@@ -367,7 +356,7 @@ export class ConditionService {
     historicDataAndTechnical: BacktestedConditionModel,
   ) {
     if (configCondition.exit) {
-      console.log(historicDataAndTechnical.extraData.technical);
+      //  console.log(historicDataAndTechnical.extraData.technical);
       let basedValueToexit =
         configCondition.exit.valueBasedOn == 'indicator'
           ? historicDataAndTechnical.extraData.technical[0][historicDataAndTechnical.extraData.technical[0].length - 2]

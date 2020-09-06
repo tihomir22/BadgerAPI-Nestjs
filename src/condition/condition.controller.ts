@@ -69,6 +69,16 @@ export class ConditionController {
     });
   }
 
+  @Post('testOperationById') testOperationId(@Body() searchModel: { id: string }, @Res() res) {
+    this.conditionREST.returnById(searchModel.id).then(data => {
+      new Observable(observer => {
+        this.conditionExecutioner.executePreparations([data], observer);
+      }).subscribe(data => {
+        res.send(data);
+      });
+    });
+  }
+
   /*@Post('changeFundingAsset')
   changeFundingAsset(@Body() body: ChangeFundingAsset) {
     return this.conditionService.changeFundingAsset(body.id, body.fundingAsset);

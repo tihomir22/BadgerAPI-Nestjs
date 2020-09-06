@@ -7,12 +7,14 @@ import {
   NewOrderModel,
   PrivateRequestsKeysWithDualSidePosition,
   BaseBinanceModel,
+  PrivateRequestsKeysWithExchangeAndTestnetFlag,
 } from '../models/PrivateRequestsModel';
 import { CryptoService } from '../crypto/crypto/crypto.service';
 import { HttpServiceCustom } from '../http/http.service';
 import { map, mergeMap, catchError, timestamp } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { BadgerUtils } from '../static/Utils';
+
 @Injectable()
 export class BinanceService {
   constructor(private crypto: CryptoService, private servicio: HttpServiceCustom) {}
@@ -25,39 +27,49 @@ export class BinanceService {
   public getAccountInfo(model: BaseBinanceModel) {
     let apiKey = this.crypto.decryptTXT(model.keys.public);
     let privateKey = this.crypto.decryptTXT(model.keys.private);
-    let publicClient = Binance({ apiKey: apiKey, apiSecret: privateKey });
-    return publicClient.accountInfo();
+    let publicClient = Binance({
+      apiKey: apiKey,
+      apiSecret: privateKey,
+    });
+    return publicClient.accountInfo({ useServerTime: true });
+  }
+
+  public getFutureAccountInfo(model: PrivateRequestsKeysWithExchangeAndTestnetFlag) {
+    return this.executeBinancePrivateRequestGET(
+      { public: model.public, private: model.private },
+      undefined,
+      `/fapi/${BadgerUtils.VERSION_ON_USE}/balance`,
+      model.isTestnet,
+    );
   }
 
   public async getTime() {
     return await this.servicio.http
-      .get('https://api.binance.com/api/v1/time')
+      .get(`https://api.binance.com/api/v1/time`)
       .pipe(map(entry => entry.data.serverTime))
       .toPromise();
   }
 
   public getTimeAsObservable() {
-    return this.servicio.http.get('https://api.binance.com/api/v1/time').pipe(map(entry => entry.data.serverTime));
-  }
-
-  public getFutureAccountInfo(model: BaseBinanceModel) {
-    return this.executeBinancePrivateRequestGET(model.keys, model.params, '/fapi/v1/balance');
+    return this.servicio.http
+      .get(`https://api.binance.com/api/${BadgerUtils.VERSION_ON_USE}/time`)
+      .pipe(map(entry => entry.data.serverTime));
   }
 
   public async obtainOpenedOrders(model: BaseBinanceModel) {
-    return this.executeBinancePrivateRequestGET(model.keys, model.params, '/fapi/v1/positionRisk');
+    return this.executeBinancePrivateRequestGET(model.keys, model.params, `/fapi/${BadgerUtils.VERSION_ON_USE}/positionRisk`);
   }
 
   public obtainCurrentAllOpenOrders(model: BaseBinanceModel) {
-    return this.executeBinancePrivateRequestGET(model.keys, model.params, '/fapi/v1/openOrders');
+    return this.executeBinancePrivateRequestGET(model.keys, model.params, `/fapi/${BadgerUtils.VERSION_ON_USE}/openOrders`);
   }
 
   public cancelAllOpenedOrders(model: BaseBinanceModel) {
-    return this.executeBinancePrivateRequestDELETE(model.keys, model.params, '/fapi/v1/allOpenOrders');
+    return this.executeBinancePrivateRequestDELETE(model.keys, model.params, `/fapi/${BadgerUtils.VERSION_ON_USE}/allOpenOrders`);
   }
 
   public changePositionMode(model: BaseBinanceModel) {
-    return this.executeBinancePrivateRequestPOST(model.keys, model.params, '/fapi/v1/positionSide/dual');
+    return this.executeBinancePrivateRequestPOST(model.keys, model.params, `/fapi/${BadgerUtils.VERSION_ON_USE}/positionSide/dual`);
   }
 
   async newOrder(keys: PrivateRequestsKeys, orderInfo: NewOrderModel) {
@@ -65,20 +77,25 @@ export class BinanceService {
     let busqudaSimbolo = futuresInfo.symbols.find(symbol => symbol.symbol == orderInfo.symbol);
     if (busqudaSimbolo) {
       orderInfo.quantity = parseFloat(orderInfo.quantity.toFixed(busqudaSimbolo['quantityPrecision']));
-      return this.executeBinancePrivateRequestPOST(keys, orderInfo, '/fapi/v1/order');
+      return this.executeBinancePrivateRequestPOST(keys, orderInfo, `/fapi/${BadgerUtils.VERSION_ON_USE}/order`);
     } else {
       throw new HttpException(`The simbol ${orderInfo.symbol} is wrong`, 400);
     }
   }
 
   public queryOrder(model: BaseBinanceModel) {
-    return this.executeBinancePrivateRequestGET(model.keys, model.params, '/fapi/v1/order');
+    return this.executeBinancePrivateRequestGET(model.keys, model.params, `/fapi/${BadgerUtils.VERSION_ON_USE}/order`);
   }
 
-  async executeBinancePrivateRequestPOST(keys: PrivateRequestsKeys, extraParams: any, endPointUrl: string): Promise<any> {
+  async executeBinancePrivateRequestPOST(
+    keys: PrivateRequestsKeys,
+    extraParams: any,
+    endPointUrl: string,
+    isTestnet?: boolean,
+  ): Promise<any> {
     let apiKey = this.crypto.decryptTXT(keys.public);
     let privateKey = this.crypto.decryptTXT(keys.private);
-    let brul = BadgerUtils.BINANCE_FUTURES_ENDPOINT;
+    let brul = BadgerUtils.GET_BINANCE_FUTURES_ENDPOINT(isTestnet);
     if (!extraParams) extraParams = {};
     let tiempo = await this.getTime();
     extraParams['timestamp'] = tiempo;
@@ -89,13 +106,17 @@ export class BinanceService {
         params: extraParams,
         headers: { 'X-MBX-APIKEY': apiKey.trim() },
       })
-      .pipe(map(entry => entry.data));
+      .pipe(map(entry => entry.data))
+      .toPromise()
+      .catch(err => {
+        throw new HttpException(err.message, err.response.status);
+      });
   }
 
-  public async executeBinancePrivateRequestDELETE(keys: PrivateRequestsKeys, extraParams: any, endPointUrl: string) {
+  public async executeBinancePrivateRequestDELETE(keys: PrivateRequestsKeys, extraParams: any, endPointUrl: string, isTestnet?: boolean) {
     let apiKey = this.crypto.decryptTXT(keys.public);
     let privateKey = this.crypto.decryptTXT(keys.private);
-    let brul = BadgerUtils.BINANCE_FUTURES_ENDPOINT;
+    let brul = BadgerUtils.GET_BINANCE_FUTURES_ENDPOINT(isTestnet);
     if (!extraParams) extraParams = {};
     let time = await this.getTime();
     extraParams['timestamp'] = time;
@@ -106,13 +127,16 @@ export class BinanceService {
         headers: { 'X-MBX-APIKEY': apiKey.trim() },
       })
       .pipe(map(entry => entry.data))
-      .toPromise();
+      .toPromise()
+      .catch(err => {
+        throw new HttpException(err.message, err.response.status);
+      });
   }
 
-  public async executeBinancePrivateRequestGET(keys: PrivateRequestsKeys, extraParams: any, endPointUrl: string) {
+  public async executeBinancePrivateRequestGET(keys: PrivateRequestsKeys, extraParams: any, endPointUrl: string, isTestnet?: boolean) {
     let apiKey = this.crypto.decryptTXT(keys.public);
     let privateKey = this.crypto.decryptTXT(keys.private);
-    let brul = BadgerUtils.BINANCE_FUTURES_ENDPOINT;
+    let brul = BadgerUtils.GET_BINANCE_FUTURES_ENDPOINT(isTestnet);
     if (!extraParams) extraParams = {};
     let time = await this.getTime();
     extraParams['timestamp'] = time;
@@ -124,7 +148,10 @@ export class BinanceService {
         headers: { 'X-MBX-APIKEY': apiKey.trim() },
       })
       .pipe(map(entry => entry.data))
-      .toPromise();
+      .toPromise()
+      .catch(err => {
+        throw new HttpException(err.response.data.msg, err.response.status);
+      });
   }
 
   private generateQueryStringSignature(params: any, time: number) {

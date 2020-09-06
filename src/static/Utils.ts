@@ -1,9 +1,19 @@
-import { FullConditionsModel } from "../condition/schemas/Conditions.schema";
-import { UserKey } from "../keys/schemas/UserKeys.schema";
+import { FullConditionsModel } from '../condition/schemas/Conditions.schema';
+import { UserKey } from '../keys/schemas/UserKeys.schema';
 
 export class BadgerUtils {
-  public static BINANCE_FUTURES_ENDPOINT = 'https://fapi.binance.com';
-  //public static BINANCE_FUTURES_ENDPOINT = 'https://testnet.binancefuture.com';
+  public static BINANCE_FUTURES_REAL = 'https://fapi.binance.com';
+  public static BINANCE_FUTURES_TESTNET = 'https://testnet.binancefuture.com';
+  public static GET_BINANCE_FUTURES_ENDPOINT(forceItIsTestnet?: boolean) {
+    if (forceItIsTestnet != undefined) {
+      return forceItIsTestnet === true ? this.BINANCE_FUTURES_TESTNET : this.BINANCE_FUTURES_REAL;
+    } else {
+      return this.IS_TESTNET === true ? this.BINANCE_FUTURES_TESTNET : this.BINANCE_FUTURES_REAL;
+    }
+  }
+
+  public static VERSION_ON_USE = 'v2';
+  public static IS_TESTNET: boolean = true;
 
   public static orderByMainChainingNode(a: FullConditionsModel, b: FullConditionsModel) {
     if (a.isMainChainingNode && !b.isMainChainingNode) {

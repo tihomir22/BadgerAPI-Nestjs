@@ -8,7 +8,7 @@ import { ExchangeInfo } from './schemas/ExchangeInfo.schema';
 
 import { ExchangeConstants } from './constants/ExchangeConstants';
 import { Account } from 'binance-api-node';
-import { PrivateRequestsKeysWithExchange, BaseBinanceModel } from '../models/PrivateRequestsModel';
+import { PrivateRequestsKeysWithExchange, BaseBinanceModel, PrivateRequestsKeysWithExchangeAndTestnetFlag } from '../models/PrivateRequestsModel';
 import { GeneralConfig } from '../condition/schemas/Conditions.schema';
 
 @Injectable()
@@ -132,10 +132,10 @@ export class ExchangeCoordinatorService {
     }
   }
 
-  public returnFuturesAccountInfoFromSpecificExchange(data: PrivateRequestsKeysWithExchange) {
+  public returnFuturesAccountInfoFromSpecificExchange(data: PrivateRequestsKeysWithExchangeAndTestnetFlag) {
     switch (data.exchange.toLowerCase()) {
       case 'binance':
-        return this.binance.getFutureAccountInfo({ keys: { public: data.public, private: data.private } });
+        return this.binance.getFutureAccountInfo(data);
       default:
         throw new HttpException('The exchange ' + data.exchange + ' was not found!', 404);
     }

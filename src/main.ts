@@ -13,7 +13,10 @@ async function bootstrap() {
   // app.useStaticAssets(join(__dirname, '..', 'assets'));
   app.enableCors();
   app.use(morgan('dev'));
-  await app.listen(process.env.PORT || 3000);
+  await app.listen(process.env.PORT || 3000, '0.0.0.0', () => {
+    console.log(`listening on
+   ${process.env.PORT || 3000} `);
+  });
 }
 
 bootstrap();

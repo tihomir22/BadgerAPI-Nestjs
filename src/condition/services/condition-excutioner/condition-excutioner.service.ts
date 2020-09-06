@@ -17,7 +17,6 @@ import { BadgerUtils } from '../../../static/Utils';
 import { ConditionRestService } from './condition-rest.service';
 import { EstadoEntradaSalidaCondicionEncadenada } from '../../../models/CumplimientoRegistrosModel';
 
-
 @Injectable()
 export class ConditionExcutionerService {
   private readonly logger = new Logger(ConditionExcutionerService.name);
@@ -33,18 +32,33 @@ export class ConditionExcutionerService {
   private obtainAccountInfoAndFuturesExchangeInfo(
     keyUsuarioObtenida: UserKey,
     condicionMongoDb: ConditionPack,
-  ): Observable<[Array<FuturesAccountInfo>, ExchangeInfo, any]> {
-    return forkJoin([
-      this.exchangeCoordinator.returnFuturesAccountInfoFromSpecificExchange({
-        public: keyUsuarioObtenida.publicK,
-        private: keyUsuarioObtenida.privateK,
-        exchange: condicionMongoDb.generalConfig.exchange,
+    isTestnet: boolean,
+  ): Promise<[Array<FuturesAccountInfo>, ExchangeInfo, any]> {
+    return Promise.all([
+      this.exchangeCoordinator
+        .returnFuturesAccountInfoFromSpecificExchange({
+          public: keyUsuarioObtenida.publicK,
+          private: keyUsuarioObtenida.privateK,
+          exchange: condicionMongoDb.generalConfig.exchange,
+          isTestnet,
+        })
+        .catch(err => {
+          console.log('futuresaccount', err);
+          return err;
+        }),
+      this.exchangeCoordinator.returnFuturesExchangeInfoFromSpecificExchange(condicionMongoDb.generalConfig.exchange).catch(err => {
+        console.log('error exchange');
+        return err;
       }),
-      this.exchangeCoordinator.returnFuturesExchangeInfoFromSpecificExchange(condicionMongoDb.generalConfig.exchange),
-      this.exchangeCoordinator.returnPriceOfAssetDependingOnExchange(
-        condicionMongoDb.generalConfig.exchange,
-        condicionMongoDb.generalConfig.historicParams.symbol,
-      ),
+      this.exchangeCoordinator
+        .returnPriceOfAssetDependingOnExchange(
+          condicionMongoDb.generalConfig.exchange,
+          condicionMongoDb.generalConfig.historicParams.symbol,
+        )
+        .catch(err => {
+          console.log('error price');
+          return err;
+        }),
     ]);
   }
 
@@ -54,10 +68,19 @@ export class ConditionExcutionerService {
     simbolo: string,
     lado: 'BUY' | 'SELL',
     positionSide: 'LONG' | 'SHORT',
-    type: 'LIMIT' | 'MARKET' | 'STOP' | 'STOP_MARKET' | 'TAKE_RPOFIT' | 'TAKE_RPOFIT_MARKET',
+    type: 'LIMIT' | 'MARKET' | 'STOP' | 'STOP_MARKET' | 'TAKE_PROFIT' | 'TAKE_RPOFIT_MARKET',
     quantity: number,
     exchange: string,
   ) {
+    /**
+     * Parametros adicionales dependiendo del tipo de trade
+     * LIMIT	timeInForce, quantity, price
+      MARKET	quantity
+      STOP/TAKE_PROFIT	quantity, price, stopPrice
+      STOP_MARKET/TAKE_PROFIT_MARKET	stopPrice
+      TRAILING_STOP_MARKET	callbackRate
+     */
+
     return this.exchangeCoordinator.executeOrderDependingOnExchange(
       {
         keys: {
@@ -88,8 +111,7 @@ export class ConditionExcutionerService {
         configCondition,
         historicDataAndTechnical,
       );
-
-      if (this.conditionService.seCumpleCondicion(cumplimientoUltimosRegistros)) {
+      if (this.conditionService.seCumpleCondicion(cumplimientoUltimosRegistros) || BadgerUtils.IS_TESTNET) {
         this.prepareToExecuteOrder(configCondition, conditionPack, null);
       } else if (configCondition.exit) {
         let cumplimientoSalida = this.conditionService.comprobacionCumplimientoSalidaSoloUltimoRegistro(
@@ -107,23 +129,15 @@ export class ConditionExcutionerService {
     }
   }
 
-  private executePreparationsChainedConditions(mainNodeCondition: FullConditionsModel, wrapperCondiciones: ConditionPack) {
+  private comprobarSiLasCondicionesEncadenadasSeCumplen(mainNodeCondition: FullConditionsModel, wrapperCondiciones: ConditionPack) {
     if (mainNodeCondition.isMainChainingNode) {
       if (mainNodeCondition.state == 'started') {
         let validityStatus: EstadoEntradaSalidaCondicionEncadenada = { entrada: true, salida: false };
         new Observable(observer => {
-          this.conditionService.recursivelyCheckIfChainedConditionsAreMet(
-            mainNodeCondition,
-            wrapperCondiciones.conditionConfig,
-            wrapperCondiciones.generalConfig,
-            validityStatus,
-            0,
-            0,
-            observer,
-          );
+          this.conditionService.recursivelyCheckIfChainedConditionsAreMet(mainNodeCondition, wrapperCondiciones, validityStatus, observer);
         }).subscribe((data: EstadoEntradaSalidaCondicionEncadenada) => {
           //TODO comprobar que no se ejecuten duplicados
-          console.log('whoop', data); 
+          console.log('whoop', data);
           if (data.entrada) {
             this.prepareToExecuteOrder(mainNodeCondition, wrapperCondiciones, null);
           } else if (data.salida) {
@@ -141,22 +155,26 @@ export class ConditionExcutionerService {
   }
 
   public executePreparations(conditionPack: ConditionPack[], observer: Observer<any>) {
-    conditionPack.forEach(condicionWrapper => {
-      if (condicionWrapper.conditionConfig && condicionWrapper.conditionConfig.length > 0) {
-        condicionWrapper.conditionConfig.forEach(async configCondition => {
-          switch (configCondition.type) {
-            case 'Basic':
-              this.executePreparationsBasicCondition(configCondition, condicionWrapper);
-              break;
-            case 'Chained':
-              this.executePreparationsChainedConditions(configCondition, condicionWrapper);
-              break;
-            default:
-              break;
-          }
-        });
-      }
-    });
+    try {
+      conditionPack.forEach(condicionWrapper => {
+        if (condicionWrapper.conditionConfig && condicionWrapper.conditionConfig.length > 0) {
+          condicionWrapper.conditionConfig.forEach(configCondition => {
+            switch (configCondition.type) {
+              case 'Basic':
+                this.executePreparationsBasicCondition(configCondition, condicionWrapper);
+                break;
+              case 'Chained':
+                this.comprobarSiLasCondicionesEncadenadasSeCumplen(configCondition, condicionWrapper);
+                break;
+              default:
+                break;
+            }
+          });
+        }
+      });
+    } catch (error) {
+      observer.next(error);
+    }
   }
 
   private async ejecutarSalida(configCondition: FullConditionsModel, condicionMongoDb: ConditionPack, observer: Observer<any>) {
@@ -172,82 +190,82 @@ export class ConditionExcutionerService {
     this.keysService.returnKeysByUserID(wrapperCondiciones.user).then(keysDelUser => {
       let keyUsuarioObtenida = BadgerUtils.busquedaKeysValida(keysDelUser, wrapperCondiciones.generalConfig.exchange);
       if (keyUsuarioObtenida) {
-        this.obtainAccountInfoAndFuturesExchangeInfo(keyUsuarioObtenida, wrapperCondiciones).subscribe(async data => {
-          //Obtencion de datos
-          let cuenta: Array<FuturesAccountInfo> = data[0];
-          let exchangeInfo: ExchangeInfo = data[1];
-          let ultimoPrecioAsset: number = data[2];
-          //Cuando apliquemos cantidades fijas, debemos tenerlas en cuenta en vez de obtener todas las posesiones del usuario
-          let cantidadEnTetherDelUsuario = parseFloat(cuenta.find(entry => entry.asset === 'USDT').withdrawAvailable);
-          let futureAssetInfo = exchangeInfo.symbols.find(
-            exchangeSymbol => exchangeSymbol.symbol.toLowerCase() == wrapperCondiciones.generalConfig.historicParams.symbol.toLowerCase(),
-          );
+        this.obtainAccountInfoAndFuturesExchangeInfo(keyUsuarioObtenida, wrapperCondiciones, keyUsuarioObtenida.isTestnet).then(
+          ([cuenta, exchangeInfo, ultimoPrecioAsset]) => {
+            //Cuando apliquemos cantidades fijas, debemos tenerlas en cuenta en vez de obtener todas las posesiones del usuario
+            let cantidadEnTetherDelUsuario = parseFloat(cuenta.find(entry => entry.asset === 'USDT').withdrawAvailable);
+            let futureAssetInfo = exchangeInfo.symbols.find(
+              exchangeSymbol => exchangeSymbol.symbol.toLowerCase() == wrapperCondiciones.generalConfig.historicParams.symbol.toLowerCase(),
+            );
 
-          if (futureAssetInfo) {
-            /*this.tryToExecuteOrder(
-              futureAssetInfo,
-              ultimoPrecioAsset,
-              cantidadEnTetherDelUsuario,
-              keyUsuarioObtenida,
-              wrapperCondiciones,
-              subCondicion,
-            );*/
-            console.log('executing order');
-          } else {
-            if (emisorRespuesta) emisorRespuesta.next([futureAssetInfo]);
-          }
-        });
+            if (futureAssetInfo) {
+              this.tryToExecuteOrder(
+                futureAssetInfo,
+                ultimoPrecioAsset,
+                cantidadEnTetherDelUsuario,
+                keyUsuarioObtenida,
+                wrapperCondiciones,
+                subCondicion,
+              );
+              console.log('executing order');
+            } else {
+              if (emisorRespuesta) emisorRespuesta.next([futureAssetInfo]);
+            }
+          },
+        );
       } else {
         throw new HttpException(`No key found for the user ${wrapperCondiciones.user}`, 404);
       }
     });
   }
 
-  private tryToExecuteOrder(
+  private async tryToExecuteOrder(
     futureAssetInfo: any,
     ultimoPrecioAsset: number,
     cantidadEnTetherDelUsuario: number,
     keyUsuarioObtenida: UserKey,
     wrapperCondiciones: ConditionPack,
     subCondicion: FullConditionsModel,
-  ): void {
+  ) {
     let busquedaCantidadMinimaDeEntrada = futureAssetInfo.filters.find((filtro: any) => filtro.filterType == 'MARKET_LOT_SIZE');
     if (busquedaCantidadMinimaDeEntrada) {
       let stepSize = parseFloat(busquedaCantidadMinimaDeEntrada['stepSize']);
       let cantidadMinima = parseFloat(busquedaCantidadMinimaDeEntrada['minQty']);
       let cantidadMinimaDeTether = ultimoPrecioAsset * cantidadMinima;
       let cantidadAInvertirEnSiguienteOperacionTether = parseInt(cantidadEnTetherDelUsuario / 2 / stepSize + '') * stepSize;
-      let cantidadAInvertirEnSiguienteOperacionBTC = cantidadEnTetherDelUsuario / ultimoPrecioAsset / 2;
+      let cantidadAInvertirEnSiguienteOperacion = cantidadEnTetherDelUsuario / ultimoPrecioAsset / 2;
       if (
         cantidadAInvertirEnSiguienteOperacionTether >= cantidadMinimaDeTether &&
-        cantidadAInvertirEnSiguienteOperacionBTC >= cantidadMinima
+        cantidadAInvertirEnSiguienteOperacion >= cantidadMinima
       ) {
         console.log('el usuario tiene suficiente pasta');
-        this.executeOrder(
+        let operacion = await this.executeOrder(
           keyUsuarioObtenida,
           wrapperCondiciones.user + ':' + Math.floor(Math.random() * 100) + 1 + ':' + subCondicion.id,
           wrapperCondiciones.generalConfig.historicParams.symbol,
           subCondicion.enter.doWhat.toUpperCase().trim() as any,
           subCondicion.enter.doWhat.toUpperCase().trim() == 'BUY' ? 'LONG' : 'SHORT',
           'MARKET',
-          cantidadAInvertirEnSiguienteOperacionBTC,
+          cantidadAInvertirEnSiguienteOperacion,
           wrapperCondiciones.generalConfig.exchange,
-        ).then(data => {
-          data.subscribe((data: FuturesOrderInfo) => {
-            if (data.clientOrderId) {
-              this.inserTradeLog(data, wrapperCondiciones.generalConfig.exchange, ultimoPrecioAsset, Date.now());
-              this.generalService.sendNotificationToSpecificUser(
-                wrapperCondiciones.user,
-                this.generalService.generateNotification(
-                  `Position opened ${data.side}`,
-                  `A position was opened at ${ultimoPrecioAsset}$ at ${moment()
-                    .format('DD/MM/YYYY HH:MM')
-                    .toString()} with ${data.cumQty} size.`,
-                ),
-              );
-            }
-          });
-        });
+        );
+
+        if (operacion.clientOrderId) {
+          //Si la operación fue exitosa
+          this.inserTradeLog(operacion, wrapperCondiciones.generalConfig.exchange, ultimoPrecioAsset, Date.now());
+          this.generalService.sendNotificationToSpecificUser(
+            wrapperCondiciones.user,
+            this.generalService.generateNotification(
+              `Position opened ${operacion.side}`,
+              `A position was opened at ${ultimoPrecioAsset}$ at ${moment()
+                .format('DD/MM/YYYY HH:MM')
+                .toString()} with ${operacion.cumQty} size.`,
+            ),
+          );
+          if (subCondicion.exit && subCondicion.exit.typeExit == 'static') {
+            console.log('debemos crear posiciones de take profit y stop loss');
+          }
+        }
       } else {
         console.log('El usuario debe ingresar más pasta :D');
       }

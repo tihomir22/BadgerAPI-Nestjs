@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Res, HttpException, Put, Body, Header, Post } from '@nestjs/common';
 import { ExchangeCoordinatorService } from './exchange-coordinator';
 import { ExchangeInfo } from './schemas/ExchangeInfo.schema';
-import { PrivateRequestsKeysWithExchange } from '../models/PrivateRequestsModel';
+import { PrivateRequestsKeysWithExchange, PrivateRequestsKeysWithExchangeAndTestnetFlag } from '../models/PrivateRequestsModel';
 
 @Controller('exchange-coordinator')
 export class ExchangeCoordinatorController {
@@ -22,13 +22,14 @@ export class ExchangeCoordinatorController {
     return this.exchangeCordinatorService.inserSomething(newExchange);
   }
 
+  //DEPRECATED - Se obtienen los datos SPOT del usuario
   @Post('getAccountInfo')
   getAccountInfo(@Body() data: PrivateRequestsKeysWithExchange) {
     return this.exchangeCordinatorService.returnAccountInfoFromSpecificExchange(data);
   }
 
   @Post('getFuturesAccountInfo')
-  getFuturesAccountInfo(@Body() data: PrivateRequestsKeysWithExchange) {
+  getFuturesAccountInfo(@Body() data: PrivateRequestsKeysWithExchangeAndTestnetFlag) {
     return this.exchangeCordinatorService.returnFuturesAccountInfoFromSpecificExchange(data);
   }
 
@@ -40,6 +41,11 @@ export class ExchangeCoordinatorController {
   @Get('getFutureAssets/:exchangeName')
   returnFutureAssetsFromExchange(@Param('exchangeName') exchName) {
     return this.exchangeCordinatorService.returnFutureAssetsFromSpecificExchange(exchName);
+  }
+
+  @Get('getExchangeInfo/:exchangeName')
+  getExchangeInfo(@Param('exchangeName') exchangeInfo: string) {
+    return this.exchangeCordinatorService.returnExchangeInfoFromSpecificExchange(exchangeInfo);
   }
 
   @Get('fetchFullCMDDATA')

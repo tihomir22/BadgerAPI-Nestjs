@@ -6,6 +6,7 @@ import { ExchangeCoordinatorService } from '../../../exchange-coordinator/exchan
 import { TechnicalIndicatorsService } from '../../../technical-indicators/technical-indicators.service';
 import { BacktestedConditionModel } from '../../../models/PaqueteIndicadorTecnico';
 import { cloneDeep } from 'lodash';
+import { CronTypeTime } from '../../../app.service';
 
 @Injectable()
 export class ConditionRestService {
@@ -23,7 +24,7 @@ export class ConditionRestService {
     return await this.conditionModel.find();
   }
 
-  public returnById(id: string) {
+  public async returnById(id: string): Promise<ConditionPack> {
     return this.conditionModel.findById(id);
   }
 
@@ -31,10 +32,12 @@ export class ConditionRestService {
     return this.conditionModel.deleteOne({ _id: id });
   }
 
-  async returnConditionsByTimeFrame(
-    timeFrame: '1m' | '3m' | '5m' | '15m' | '30m' | '1h' | '2h' | '4h' | '6h' | '8h' | '12h' | '1d' | '3d' | '1w' | '1M',
-  ) {
+  async returnConditionsByTimeFrame(timeFrame: CronTypeTime) {
     return await this.conditionModel.find({ 'generalConfig.historicParams.interval': timeFrame });
+  }
+
+  public returnConditionsWithFixedExit() {
+    return this.conditionModel.find({ 'conditionConfig.exit.typeExit': 'static' });
   }
 
   async changeState(encondedConditionId: any, conditionState: string) {

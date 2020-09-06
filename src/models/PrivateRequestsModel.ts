@@ -12,6 +12,10 @@ export interface PrivateRequestsKeysWithExchange extends PrivateRequestsKeys {
   exchange: string;
 }
 
+export interface PrivateRequestsKeysWithExchangeAndTestnetFlag extends PrivateRequestsKeysWithExchange {
+  isTestnet: boolean;
+}
+
 export interface PrivateRequestsKeysWithSymbol extends PrivateRequestsKeys {
   symbol: string;
 }

@@ -6,10 +6,20 @@ import { GeneralService } from './general/general.service';
 import { forkJoin, of, Observable } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ConditionExcutionerService } from './condition/services/condition-excutioner/condition-excutioner.service';
+import { ConditionRestService } from './condition/services/condition-excutioner/condition-rest.service';
+import { FullConditionsModel, ConditionPack } from './condition/schemas/Conditions.schema';
+export type CronTypeTime = '5s' | '1m' | '3m' | '5m' | '15m' | '30m' | '1h' | '2h' | '4h' | '6h' | '8h' | '12h' | '1d' | '3d' | '1w' | '1M';
+
 @Injectable()
 export class AppService {
   private readonly logger = new Logger(AppService.name);
-  constructor(private condicionService: ConditionService, private conditionExecutioner: ConditionExcutionerService) {}
+  constructor(private condicionService: ConditionRestService, private conditionExecutioner: ConditionExcutionerService) {}
+
+  /*  //Used to check live conditions
+  @Cron(CronExpression.EVERY_5_SECONDS)
+  async handleCron5SECS() {
+    this.handleCronByTimeFrame('5s', 'LIVE');
+  }*/
 
   @Cron(CronExpression.EVERY_MINUTE)
   async handleCron1MIN() {
@@ -71,21 +81,20 @@ export class AppService {
     this.handleCronByTimeFrame('1d', '1 Day');
   }
 
-  private handleCronByTimeFrame(
-    timeFrame: '1m' | '3m' | '5m' | '15m' | '30m' | '1h' | '2h' | '4h' | '6h' | '8h' | '12h' | '1d' | '3d' | '1w' | '1M',
-    prefixToShow: string,
-  ) {
-    /*this.condicionService.returnConditionsByTimeFrame(timeFrame).then(data => {
+  private handleCronByTimeFrame(timeFrame: CronTypeTime, prefixToShow: string) {
+    this.condicionService.returnConditionsByTimeFrame(timeFrame).then(data => {
       this.logger.debug(prefixToShow + ' conditions ' + data.length);
-      if (data.length > 0) {
-        this.condicionService.returnConditionsByTimeFrame(timeFrame).then(data => {
-          new Observable(observer => {
-            this.conditionExecutioner.executePreparations(data, observer);
-          }).subscribe(data => {
-            this.logger.debug(prefixToShow + '=> La ejecución ha terminado');
-          });
-        });
-      }
-    });*/
+      this.realizarComprobacionesCondiciones(data, prefixToShow);
+    });
+  }
+
+  private realizarComprobacionesCondiciones(data: Array<ConditionPack>, prefixToShow: string) {
+    /*if (data.length > 0) {
+      new Observable(observer => {
+        this.conditionExecutioner.executePreparations(data, observer);
+      }).subscribe(data => {
+        this.logger.debug(prefixToShow + '=> La ejecución ha terminado');
+      });
+    }*/
   }
 }
